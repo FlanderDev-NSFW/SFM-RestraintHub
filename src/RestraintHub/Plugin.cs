@@ -9,6 +9,8 @@ namespace RestraintHub
     /// <summary>
     /// The shared home of the restraint mods (SpreaderBar, WallRestraint, Yoke): see <see cref="Hub"/>. Loads before them
     /// (they declare a hard dependency on <see cref="PluginGuid"/>).
+    /// <para><b>Not API:</b> the config entries are public for the dev bridge (live tuning). Restraint mods use
+    /// <see cref="Hub"/> (<see cref="Hub.Guid"/>, <see cref="Hub.Version"/>) and <see cref="Restraint"/>.</para>
     /// </summary>
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public sealed class Plugin : BasePlugin

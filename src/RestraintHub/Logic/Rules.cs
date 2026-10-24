@@ -3,27 +3,54 @@ using System.Collections.Generic;
 
 namespace RestraintHub
 {
-    /// <summary>What a restraint holds; two restraints that hold the same part cannot be worn together.</summary>
+    /// <summary>
+    /// What a restraint holds (<see cref="Restraint.Holds"/>). While <c>General.BlockEachOther</c> is on, two restraints that
+    /// share a part cannot be worn together: the one chosen second is refused with "Can't use the X: the Y holds her ...".
+    /// </summary>
     [Flags]
     public enum BodyParts
     {
+        /// <summary>Holds nothing the hub checks (never conflicts).</summary>
         None = 0,
+        /// <summary>Neck (collars, yokes).</summary>
         Neck = 1,
-        Arms = 2,      // arms / hands (the game's handcuffs count here)
+        /// <summary>Arms and hands. The game's own handcuffs count as holding this.</summary>
+        Arms = 2,
+        /// <summary>Legs and feet (spreader bars, ankle cuffs).</summary>
         Legs = 4,
-        Spot = 8,      // she is held at a place (a wall)
+        /// <summary>She is held at a place in the world (a wall, a post): nothing else that moves her can be added.</summary>
+        Spot = 8,
     }
 
-    /// <summary>What a worn restraint takes away from the player's input (the hub applies the union of all worn ones).</summary>
+    /// <summary>
+    /// What a worn restraint takes away from the player (<see cref="Restraint.Blocks"/>). The hub clears these fields of the
+    /// game's resolved input every frame (postfix on <c>InputResolver.Resolve</c>), for the union of all worn restraints.
+    /// Refused hand actions and pose skills show "Can't do that with the X on." (at most once a second).
+    /// </summary>
     [Flags]
     public enum Blocks
     {
+        /// <summary>Takes nothing away.</summary>
         None = 0,
-        Running = 1,      // Shift, auto run / chase (Shift still ends a pose skill, as in vanilla)
-        Moving = 2,       // walking, jumping, the slow skill
+        /// <summary>No running: <c>Dash</c>, <c>JustAutoRun</c>, <c>JustAutoChase</c>. Shift stays usable while a pose skill
+        /// runs, because Shift + move is how the player ends one.</summary>
+        Running = 1,
+        /// <summary>No moving at all: <c>Move</c> zeroed, <c>JustMove</c>, <c>Jump</c>, <c>MoveForwardOneHand</c>,
+        /// <c>JustSlowSkill</c>, and running (as <see cref="Running"/>, Shift included).</summary>
+        Moving = 2,
+        /// <summary>No crouching / crawling: <c>JustCrouch</c>.</summary>
         Crouching = 4,
-        HandActions = 8,  // masturbating, toys, the game's handcuffs, eye mask, drinking, dropping items, clothes
+        /// <summary>Nothing that needs her hands: masturbating, the dildo, the game's handcuffs, the eye mask, drinking,
+        /// dropping items (and the handcuff key / vibrator remote), taking off bra or pants, opening or closing the coat
+        /// (<c>JustOnaniNormal</c>, <c>JustRingDildo</c>, <c>JustRingHandcuff</c>, <c>JustRingEyeMask</c>, <c>JustEyeMask</c>,
+        /// <c>JustDrinkWater</c>, <c>JustDrop*</c>, <c>JustBra</c>, <c>JustPants</c>, <c>JustOpen/CloseClothesA/B</c>,
+        /// <c>MoveForwardOneHand</c>). Shows the refusal message.</summary>
+        HandActions = 8,
+        /// <summary>No pose skills from the ring or number keys (<c>JustPoseSkill</c>). Shows the refusal message. A pose that
+        /// already runs is not ended - end it yourself when the restraint goes on if it needs the bones the pose uses
+        /// (Yoke: <c>pca.PlayerAction.ChangeAction(ActionType.None)</c>).</summary>
         PoseSkills = 16,
+        /// <summary>No peeing: <c>JustPee</c>.</summary>
         Pee = 32,
     }
 }

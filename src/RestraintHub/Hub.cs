@@ -5,49 +5,144 @@ using ExposureUnnoticed2.Object3D.Player.Scripts;
 namespace RestraintHub
 {
     /// <summary>
-    /// One restraint mod's registration with the hub (<see cref="Hub.Register"/>). The mod fills in the description and the
-    /// callbacks before registering; the hub sets <see cref="Selected"/> / <see cref="StruggleHeld"/> and hands out + / - steps.
-    /// Everything runs on Unity's main thread.
+    /// One restraint's registration with the hub - a description plus callbacks, handed to <see cref="Hub.Register"/> once from
+    /// the mod's <c>Load</c>. Fill in the fields marked "set by the mod" before registering and keep the object: the hub writes
+    /// <see cref="Selected"/> and <see cref="StruggleHeld"/> into it every frame and queues + / - presses for
+    /// <see cref="TakeStep"/>.
+    /// <para>
+    /// <b>Threading and timing.</b> Everything happens on Unity's main thread. The hub's own <c>Update</c> runs every frame in
+    /// game (ring, list, keys) - in no fixed order relative to the mod's <c>Update</c>, so a value the hub sets can be one frame
+    /// old when the mod reads it; that is harmless for keys held over many frames. Callbacks must be cheap (some run every
+    /// frame) and must not throw: the hub catches and logs exceptions, but a throwing <see cref="IsWorn"/> makes the restraint
+    /// count as not worn.
+    /// </para>
+    /// <para>
+    /// <b>Minimal registration</b> (see <c>mods/RestraintTemplate</c> for a complete mod):
+    /// <code>
+    /// Hub.Register(new Restraint
+    /// {
+    ///     Id = "Blindfold", RingValue = 9400, Label = () => "Blindfold", ShortcutSaveKey = "Blindfold.Shortcuts",
+    ///     Holds = BodyParts.Neck, IsWorn = () => machine.Worn, Blocks = () => Blocks.Running,
+    ///     OnChosen = () => machine.RequestLock(), Attempt = () => machine.Attempt,
+    /// });
+    /// </code>
+    /// </para>
     /// </summary>
     public sealed class Restraint
     {
-        // --- filled in by the mod -----------------------------------------------------------------------------------------
+        // --- set by the mod -----------------------------------------------------------------------------------------------
 
-        /// <summary>Stable id ("SpreaderBar"): orders the ring entries, names it in the log.</summary>
+        /// <summary>
+        /// Set by the mod (required). Stable, unique id, e.g. <c>"SpreaderBar"</c>: the ring entries are ordered by it (ordinal), it
+        /// names the restraint in the log and builds its localisation key (<c>restrainthub_&lt;Id&gt;</c>). Never change it once
+        /// released - players' ring positions follow it.
+        /// </summary>
         public string Id;
-        /// <summary>RingItemType value of its ring entry, unique among mods (9000..9998).</summary>
+
+        /// <summary>
+        /// Set by the mod (required). The <c>RingItemType</c> value of the ring entry: 9000..9998, unique among all restraint mods
+        /// (9999 is the hub's empty filler). The game ignores values it does not know, so this only has to differ from the other
+        /// mods - see the registry in <c>mods/RestraintHub/README.md</c> (taken: 9100 SpreaderBar, 9200 WallRestraint, 9300 Yoke).
+        /// Never saved: the hub keeps the game's saved shortcut indices on game entries.
+        /// </summary>
         public int RingValue;
-        /// <summary>Name in the ring and the list (read every time, so a config change shows at once).</summary>
+
+        /// <summary>
+        /// Set by the mod (recommended). The name shown in the ring, the list and messages ("Can't use the <i>Label</i>: ...").
+        /// Called whenever it is shown (every frame while the list is visible), so a config change shows at once; keep it cheap.
+        /// Null: <see cref="Id"/> is shown.
+        /// </summary>
         public Func<string> Label;
-        /// <summary>Save key that holds the number shortcuts with this entry (kept from before the hub, so old saves keep them).</summary>
+
+        /// <summary>
+        /// Set by the mod (recommended). The key in the game's save file under which the hub stores which number keys (1-8) hold
+        /// this entry (an int bit mask: bit k = key k+1). Pick one in your mod's namespace (<c>"MyMod.Shortcuts"</c>) and never
+        /// rename it, or players lose their shortcuts. Null: shortcuts are not saved.
+        /// </summary>
         public string ShortcutSaveKey;
-        /// <summary>Optional: the save has no shortcut key; return a mask to use (SpreaderBar repairs saves from 0.1.0 here).</summary>
+
+        /// <summary>
+        /// Set by the mod (optional). Called on load when the save has no <see cref="ShortcutSaveKey"/> (a save from before the
+        /// mod, or from before it used the hub); return the bit mask to use, 0 for none. Runs inside the game's load, before the
+        /// stage starts. Null: 0.
+        /// </summary>
         public Func<int> OnShortcutsMissing;
+
+        /// <summary>
+        /// Set by the mod. The body parts the restraint holds. While <c>General.BlockEachOther</c> is on (the default; the
+        /// player toggles it with <c>V</c>) the hub refuses to put on a restraint that needs a part a worn one holds, with a
+        /// message - the game's handcuffs count as holding <see cref="BodyParts.Arms"/>. When the player switches blocking off,
+        /// your restraint can be worn together with one that poses the same bones: whichever writes the bones last in
+        /// <c>LateUpdate</c> wins, so pose code must not assume it is alone.
+        /// </summary>
         public BodyParts Holds;
+
+        /// <summary>
+        /// Set by the mod (required). Whether it is on - from the moment it starts closing until it is fully off (with SfmKit's
+        /// <c>LockMachine</c>: <c>machine.Worn</c>). Polled every frame; the list, F, + / -, blocking and the conflicts follow it.
+        /// A restraint that turns worn by itself (a loaded save) appears in the list and becomes the selected one.
+        /// </summary>
         public Func<bool> IsWorn;
-        /// <summary>What it takes away while worn (may change, e.g. with a config mode).</summary>
+
+        /// <summary>
+        /// Set by the mod (optional). What the player may not do while it is worn; called every input frame while worn, so it
+        /// may change (e.g. with a config mode). The hub applies the union over all worn restraints. Null: nothing.
+        /// </summary>
         public Func<Blocks> Blocks;
-        /// <summary>The player chose the entry and nothing worn conflicts with it: put it on (or say why not).</summary>
+
+        /// <summary>
+        /// Set by the mod (required). The player chose the entry (ring click or a number key) while it is <b>not</b> worn and
+        /// nothing worn holds a part it needs (or blocking is off). Put it on - or tell the player why not with
+        /// <see cref="Hub.Message"/> (no wall here, too narrow ...). Choosing it while worn never calls this: the hub selects it
+        /// in the list instead and says "... is on - hold F to struggle free."
+        /// </summary>
         public Action OnChosen;
-        /// <summary>Progress of the current struggle attempt, 0..1, for the game's "Unlocking..." gauge.</summary>
+
+        /// <summary>
+        /// Set by the mod (optional). Progress of the current struggle attempt, 0..1, shown in the game's own "Unlocking..."
+        /// gauge while the restraint is selected and above 0 (<c>machine.Attempt</c>). Null: no gauge.
+        /// </summary>
         public Func<float> Attempt;
-        /// <summary>Optional: called with the frame's input after the hub's blocking while worn (SpreaderBar's pose mode).</summary>
+
+        /// <summary>
+        /// Set by the mod (optional). Called once per input frame while worn, inside a postfix on the game's
+        /// <c>InputResolver.Resolve</c>, after the hub cleared what <see cref="Blocks"/> forbids - change the
+        /// <see cref="InputData"/> here for anything the flags do not cover (SpreaderBar lets its forced pose step aside for
+        /// actions). <c>Interact</c> is already false when the game's handcuffs are worn but not selected.
+        /// </summary>
         public Action<InputData> OnInput;
-        /// <summary>Optional short text for the list ("+/- width").</summary>
+
+        /// <summary>
+        /// Set by the mod (optional). A few words for the list next to "F" on the selected row, usually what + / - do:
+        /// <c>"+/- width"</c>. Null: only "(F)".
+        /// </summary>
         public string Controls;
 
         // --- set by the hub ------------------------------------------------------------------------------------------------
 
-        /// <summary>The selected one of the worn restraints: F and + / - act on it.</summary>
+        /// <summary>
+        /// Set by the hub. This restraint is worn and selected in the list: F and + / - act on it. Exactly one worn item is
+        /// selected (it may be the game's handcuffs, then no restraint is).
+        /// </summary>
         public bool Selected { get; internal set; }
-        /// <summary>F is held for this restraint (it is selected, no menu or ring is open, she is not in an interaction area).</summary>
+
+        /// <summary>
+        /// Set by the hub. The player holds F for this restraint: it is selected, no game menu or the ring is open, and she is
+        /// not in an interaction area (closet, PC ... - F belongs to the area there). Feed it to your lock logic as "unlock key
+        /// held" (with SfmKit's <c>LockMachine</c>: <c>machine.Tick(dt, entry.StruggleHeld &amp;&amp; machine.State == LockState.Locked, roll)</c>).
+        /// </summary>
         public bool StruggleHeld { get; internal set; }
 
         internal int PendingStep;
         internal int Shortcuts;      // bit k: number key k+1 holds the entry
         internal int RingIndex = -1; // index in the current ring array
 
-        /// <summary>A + (1) or - (-1) press for this restraint since the last call, else 0. Only the selected one gets them.</summary>
+        /// <summary>
+        /// A + (1) or - (-1) step for this restraint since the last call, else 0 - call it once per frame from your
+        /// <c>Update</c> and act on the result. Only the selected restraint gets steps, never while a menu or the ring is open.
+        /// The keys are the ones printed "+" / "-" on the player's keyboard, the numpad keys and "=" on US layouts; holding one
+        /// repeats (first after 0.4 s, then every 0.08 s). A step that is not taken is dropped when the selection changes.
+        /// </summary>
         public int TakeStep()
         {
             int s = PendingStep;
@@ -55,35 +150,78 @@ namespace RestraintHub
             return s;
         }
 
-        internal string Name => Label?.Invoke() ?? Id;
-        internal bool Worn => IsWorn != null && IsWorn();
+        internal string Name
+        {
+            get
+            {
+                try { return Label?.Invoke() ?? Id; }
+                catch (Exception) { return Id; }
+            }
+        }
+
+        internal bool Worn
+        {
+            get
+            {
+                try { return IsWorn != null && IsWorn(); }
+                catch (Exception e) { HubController.Fail(Id + ".IsWorn", e); return false; }
+            }
+        }
     }
 
     /// <summary>
-    /// The shared home of the restraint mods: their ring entries (on pages after the game's), the number shortcuts, one list
-    /// of what she wears with a selected item, the keys F and + / - for the selected item, the input blocking, the unlock
-    /// gauge and the conflicts between restraints. A restraint mod depends on it (<c>[BepInDependency(Hub.Guid)]</c>) and
-    /// calls <see cref="Register"/> from its <c>Load</c>.
+    /// The shared home of the restraint mods (SpreaderBar, WallRestraint, Yoke and yours): it owns their ring entries (on pages
+    /// after the game's), the number shortcuts, the on-screen list of what she wears with a selected item, the keys F and
+    /// + / - for that item, one input hook for what worn restraints block, the unlock gauge and the conflicts between
+    /// restraints. A restraint mod declares a hard dependency and registers once:
+    /// <code>
+    /// [BepInPlugin("com.you.blindfold", "Blindfold", "1.0.0")]
+    /// [BepInDependency(Hub.Guid, BepInDependency.DependencyFlags.HardDependency)]
+    /// public sealed class Plugin : BasePlugin
+    /// {
+    ///     public override void Load() { ...; Hub.Register(entry); }
+    /// }
+    /// </code>
+    /// What stays with the mod: its model and pose, its lock logic and its own save data (lock state etc.).
     /// </summary>
     public static class Hub
     {
+        /// <summary>The hub's BepInEx GUID, for <c>[BepInDependency(Hub.Guid)]</c>.</summary>
         public const string Guid = Plugin.PluginGuid;
+
+        /// <summary>The hub's version. A mod that needs a newer hub API can require it:
+        /// <c>[BepInDependency(Hub.Guid, "0.2.0")]</c> (BepInEx then refuses to load the mod with an older hub).</summary>
+        public const string Version = Plugin.PluginVersion;
 
         internal static readonly List<Restraint> All = new List<Restraint>();
 
+        /// <summary>
+        /// Register a restraint (once, from the plugin's <c>Load</c>; the hub loads first because of the dependency). From the
+        /// next time the game builds its ring it has an entry, shortcuts are restored from <see cref="Restraint.ShortcutSaveKey"/>
+        /// on load, and the hub starts calling the callbacks. Logs <c>[SFM-ACCEPT] register: &lt;Id&gt;</c>.
+        /// </summary>
+        /// <exception cref="ArgumentException">no <see cref="Restraint.Id"/>, <see cref="Restraint.IsWorn"/> or
+        /// <see cref="Restraint.OnChosen"/>; or the id or ring value is already registered.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><see cref="Restraint.RingValue"/> outside 9000..9998.</exception>
         public static void Register(Restraint r)
         {
             if (r == null || string.IsNullOrEmpty(r.Id)) throw new ArgumentException("restraint needs an Id");
-            if (r.RingValue < RingPages.ModValueStart || r.RingValue >= RingPages.PaddingValue) throw new ArgumentOutOfRangeException(nameof(r.RingValue));
+            if (r.RingValue < RingPages.ModValueStart || r.RingValue >= RingPages.PaddingValue)
+                throw new ArgumentOutOfRangeException(nameof(r.RingValue), r.RingValue, "restraint " + r.Id + ": RingValue must be 9000..9998");
             if (r.IsWorn == null || r.OnChosen == null) throw new ArgumentException("restraint " + r.Id + " needs IsWorn and OnChosen");
             foreach (var other in All)
-                if (other.Id == r.Id || other.RingValue == r.RingValue) throw new ArgumentException("restraint " + r.Id + " registered twice (id or ring value)");
+                if (other.Id == r.Id || other.RingValue == r.RingValue)
+                    throw new ArgumentException("restraint " + r.Id + " (ring value " + r.RingValue + ") clashes with " + other.Id + " (" + other.RingValue + ")");
             All.Add(r);
             All.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id)); // stable ring order whatever the load order
             Plugin.Logger.LogInfo("[SFM-ACCEPT] register: " + r.Id + " (ring value " + r.RingValue + ", holds " + r.Holds + ")");
         }
 
-        /// <summary>Show a line in the game's message bar.</summary>
+        /// <summary>The registered restraints, ordered by id (read-only view, e.g. to show what else is installed).</summary>
+        public static IReadOnlyList<Restraint> Registered => All;
+
+        /// <summary>Show a line in the game's message bar (top of the screen, the game's warning style). Safe to call any time;
+        /// does nothing outside a stage.</summary>
         public static void Message(string text) => SfmKit.Game.GameUi.Message(text);
     }
 }

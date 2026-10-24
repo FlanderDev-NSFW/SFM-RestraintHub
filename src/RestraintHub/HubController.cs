@@ -16,6 +16,8 @@ namespace RestraintHub
     /// Runs the hub every frame: ring pages, the list of worn restraints and its selection, the select key, F and + / - for
     /// the selected restraint, the list on screen. Bridge diagnostics: <c>game get RestraintHub.HubController::Status</c>,
     /// <c>game call RestraintHub.HubController SelectNext</c> (session with --allow-invoke).
+    /// <para><b>Not API:</b> public only so the dev bridge can reach it (an injected MonoBehaviour). Restraint mods use
+    /// <see cref="Hub"/> and <see cref="Restraint"/>; this class may change in any version.</para>
     /// </summary>
     public sealed class HubController : MonoBehaviour
     {
