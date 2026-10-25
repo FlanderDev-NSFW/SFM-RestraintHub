@@ -125,7 +125,7 @@ namespace RestraintHub
             catch (Exception e) { HubController.Fail("unlock gauge hook", e); }
         }
 
-        // --- save / load: each restraint's number shortcuts, under its own (pre-hub) key -----------------------------------------
+        // --- save / load: each restraint's number shortcuts (its own pre-hub key), then its own data (OnSave / OnLoad) ---------
         // Written right after SaveManager.Save into the slot it just wrote [observed 2026-10-11, SpreaderBar].
 
         private static void SavePostfix()
@@ -141,6 +141,13 @@ namespace RestraintHub
                     s += " " + r.Id + "=" + r.Shortcuts;
                 }
                 Plugin.Logger.LogInfo("[SFM-ACCEPT] save: shortcuts" + s + " path=" + SaveRapper.currentDataPath);
+                var slot = new SaveSlot(SaveRapper.currentDataPath);
+                foreach (var r in Hub.All)
+                {
+                    if (r.OnSave == null) continue;
+                    try { r.OnSave(slot); }
+                    catch (Exception e) { HubController.Fail(r.Id + ".OnSave", e); }
+                }
             }
             catch (Exception e) { HubController.Fail("save hook", e); }
         }
@@ -161,6 +168,13 @@ namespace RestraintHub
                 }
                 c.OnSaveLoaded();
                 Plugin.Logger.LogInfo("[SFM-ACCEPT] load: shortcuts" + s + " path=" + SaveRapper.currentDataPath);
+                var slot = new SaveSlot(SaveRapper.currentDataPath);
+                foreach (var r in Hub.All)
+                {
+                    if (r.OnLoad == null) continue;
+                    try { r.OnLoad(slot); }
+                    catch (Exception e) { HubController.Fail(r.Id + ".OnLoad", e); }
+                }
             }
             catch (Exception e) { HubController.Fail("load hook", e); }
         }

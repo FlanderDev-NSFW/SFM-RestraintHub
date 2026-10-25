@@ -17,7 +17,7 @@ namespace RestraintHub
     {
         public const string PluginGuid = "com.local.restrainthub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.3.0";
 
         internal static ManualLogSource Logger;
         public static ConfigEntry<string> SelectKey, ToggleConflictsKey;

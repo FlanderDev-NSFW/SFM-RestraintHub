@@ -15,12 +15,15 @@ namespace RestraintHub
         private float _repeatAt;
         public float FirstDelay = 0.4f, RepeatDelay = 0.08f;
 
+        /// <summary>The key held at the last <see cref="Poll"/>: 1 (+), -1 (-) or 0.</summary>
+        public int Direction { get; private set; }
+
         /// <summary>+1 / -1 when a step is due (on press, then repeating while held), else 0.</summary>
         public int Poll()
         {
             var kb = Keyboard.current;
-            if (kb == null) return 0;
-            int dir = Held(kb, "+", kb.numpadPlusKey) || Held(kb, "=", null) ? 1 : Held(kb, "-", kb.numpadMinusKey) ? -1 : 0;
+            int dir = kb == null ? 0 : Held(kb, "+", kb.numpadPlusKey) || Held(kb, "=", null) ? 1 : Held(kb, "-", kb.numpadMinusKey) ? -1 : 0;
+            Direction = dir;
             if (dir == 0) { _repeatAt = 0f; return 0; }
             bool first = _repeatAt == 0f;
             if (!first && Time.unscaledTime < _repeatAt) return 0;

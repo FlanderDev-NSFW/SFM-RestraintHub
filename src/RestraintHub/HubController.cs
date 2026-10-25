@@ -35,6 +35,7 @@ namespace RestraintHub
         internal bool InteractHeld;         // F this frame (Patches.ResolvePostfix)
         internal bool HandcuffsSelected;    // the game's handcuffs are selected: F is theirs
         internal bool InInteractAreaCached; // she stands in an interaction area (F is the area's), this frame
+        internal static bool MenuOpenNow, InInteractAreaNow; // Hub.MenuOpen / Hub.InInteractArea
         private readonly GameUi _ui = new GameUi();
         private readonly PlusMinusKeys _plusMinus = new PlusMinusKeys();
         private HudList _hud;
@@ -69,6 +70,7 @@ namespace RestraintHub
             bool inGame = PlayerController.Instance != null && GameState.GameStateData != null;
             if (!inGame)
             {
+                MenuOpenNow = InInteractAreaNow = false;
                 _hud.Hide();
                 return;
             }
@@ -89,15 +91,36 @@ namespace RestraintHub
             }
 
             int step = menus ? 0 : _plusMinus.Poll();
+            int held = menus ? 0 : _plusMinus.Direction;
             InInteractAreaCached = _ui.InInteractArea();
+            MenuOpenNow = menus;
+            InInteractAreaNow = InInteractAreaCached;
             bool struggle = InteractHeld && !menus && !InInteractAreaCached;
             HandcuffsSelected = List.Selected == HandcuffsId;
             foreach (var r in Hub.All)
             {
                 r.Selected = r.Id == List.Selected;
-                r.StruggleHeld = r.Selected && struggle;
+                r.HeldStep = r.Selected ? held : 0;
                 if (r.Selected && step != 0) r.PendingStep = step;
                 if (!r.Selected) r.PendingStep = 0;
+                if (r.OnTap == null)
+                {
+                    r.StruggleHeld = r.Selected && struggle;
+                    continue;
+                }
+                // A tap of F is the restraint's own (OnTap); only holding it longer is the struggle.
+                if (!r.Selected || menus || InInteractAreaCached)
+                {
+                    r.Tap.Cancel();
+                    r.StruggleHeld = false;
+                    continue;
+                }
+                bool tapped = r.Tap.Update(InteractHeld, Time.deltaTime);
+                r.StruggleHeld = r.Tap.Holding;
+                if (!tapped) continue;
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] tap: " + r.Id);
+                try { r.OnTap(); }
+                catch (Exception e) { Fail(r.Id + ".OnTap", e); }
             }
             Status = Describe();
             _hud.Show(this);
@@ -272,7 +295,8 @@ namespace RestraintHub
 
         // --- save identity -------------------------------------------------------------------------------------------------
 
-        /// <summary>A new game or the title screen replaces the game data without a load: forget the keys.</summary>
+        /// <summary>A new game or the title screen replaces the game data without a load: forget the keys, tell the restraints
+        /// (<see cref="Restraint.OnNewGame"/>).</summary>
         [HideFromIl2Cpp]
         private void TrackSaveIdentity()
         {
@@ -281,6 +305,13 @@ namespace RestraintHub
             if (ptr == _gameData) return;
             _gameData = ptr;
             Ring.Reset();
+            foreach (var r in Hub.All)
+            {
+                if (r.OnNewGame == null) continue;
+                try { r.OnNewGame(); }
+                catch (Exception e) { Fail(r.Id + ".OnNewGame", e); }
+            }
+            Plugin.Logger.LogInfo("[SFM-ACCEPT] new game: game data replaced without a load");
         }
 
         internal void OnSaveLoaded()

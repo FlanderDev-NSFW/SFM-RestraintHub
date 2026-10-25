@@ -118,6 +118,33 @@ namespace RestraintHub
         /// </summary>
         public string Controls;
 
+        /// <summary>
+        /// Set by the mod (optional, hub 0.3.0). A short tap of F (released within 0.3 s) while the restraint is selected - for a
+        /// second use of the key (NippleTether hands the chains' point to the player). With it set,
+        /// <see cref="StruggleHeld"/> turns true only once F has been held longer than a tap, so a tap never starts the struggle.
+        /// Null: F is only the struggle.
+        /// </summary>
+        public Action OnTap;
+
+        /// <summary>
+        /// Set by the mod (optional, hub 0.3.0). Called right after the game wrote a save slot: write your restraint's state
+        /// with <see cref="SaveSlot.Save(string, bool)"/> etc. under keys in your mod's namespace (<c>"MyMod.Locked"</c>; never
+        /// rename them once released). The system file is skipped. Replaces a Harmony postfix on <c>SaveManager.Save</c>.
+        /// </summary>
+        public Action<SaveSlot> OnSave;
+
+        /// <summary>
+        /// Set by the mod (optional, hub 0.3.0). Called right after the game loaded a save slot, before the stage starts: read
+        /// your keys back (with defaults for saves from before your mod). The hub already restored the shortcuts.
+        /// </summary>
+        public Action<SaveSlot> OnLoad;
+
+        /// <summary>
+        /// Set by the mod (optional, hub 0.3.0). The game's data was replaced without a load - a new game, or back to the title
+        /// screen: take the restraint off without ceremony. (Replaces tracking <c>GameState.GameStateData</c> yourself.)
+        /// </summary>
+        public Action OnNewGame;
+
         // --- set by the hub ------------------------------------------------------------------------------------------------
 
         /// <summary>
@@ -133,7 +160,15 @@ namespace RestraintHub
         /// </summary>
         public bool StruggleHeld { get; internal set; }
 
+        /// <summary>
+        /// Set by the hub (0.3.0). The + (1) or - (-1) key held right now for this restraint, else 0: for adjustments that run
+        /// smoothly while the key is held (<c>value += HeldStep * speed * Time.deltaTime</c>) instead of in
+        /// <see cref="TakeStep"/>'s steps. Only for the selected restraint, never while a menu or the ring is open.
+        /// </summary>
+        public int HeldStep { get; internal set; }
+
         internal int PendingStep;
+        internal readonly Logic.TapOrHold Tap = new Logic.TapOrHold();
         internal int Shortcuts;      // bit k: number key k+1 holds the entry
         internal int RingIndex = -1; // index in the current ring array
 
@@ -220,8 +255,47 @@ namespace RestraintHub
         /// <summary>The registered restraints, ordered by id (read-only view, e.g. to show what else is installed).</summary>
         public static IReadOnlyList<Restraint> Registered => All;
 
+        /// <summary>
+        /// A game menu or panel is open (inventory, shop, closet, PC, pause ...) or the ring is: keys belong to it. Updated by
+        /// the hub once per frame (hub 0.3.0); false outside a stage.
+        /// </summary>
+        public static bool MenuOpen => HubController.MenuOpenNow;
+
+        /// <summary>
+        /// She stands in an interaction area (closet, PC, machines, shops ...): the game shows "F &lt;name&gt;" and F is the
+        /// area's. Updated by the hub once per frame from the areas' own flag (hub 0.3.0); false outside a stage.
+        /// </summary>
+        public static bool InInteractArea => HubController.InInteractAreaNow;
+
+        /// <summary>No menu, no ring, not in an interaction area: free keys for a restraint's own controls (hub 0.3.0).</summary>
+        public static bool InputFree => !MenuOpen && !InInteractArea;
+
         /// <summary>Show a line in the game's message bar (top of the screen, the game's warning style). Safe to call any time;
         /// does nothing outside a stage.</summary>
         public static void Message(string text) => SfmKit.Game.GameUi.Message(text);
+    }
+
+    /// <summary>
+    /// The save slot the game is writing or has just read, for <see cref="Restraint.OnSave"/> / <see cref="Restraint.OnLoad"/>:
+    /// extra keys in the game's own save file (Easy Save 3, through the game's <c>SaveRapper</c>), which the game ignores
+    /// without your mod. Only valid during the call.
+    /// </summary>
+    public sealed class SaveSlot
+    {
+        internal SaveSlot(string path) { Path = path; }
+
+        /// <summary>The slot's file, e.g. <c>SaveData/1.sd</c> (diagnostics).</summary>
+        public string Path { get; }
+
+        public void Save(string key, bool value) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Save(key, value);
+        public void Save(string key, int value) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Save(key, value);
+        public void Save(string key, double value) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Save(key, value);
+        public void Save(string key, string value) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Save(key, value);
+
+        /// <summary>The value under <paramref name="key"/>, or <paramref name="fallback"/> when the save has none (older save).</summary>
+        public bool Load(string key, bool fallback) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Load(key, fallback);
+        public int Load(string key, int fallback) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Load(key, fallback);
+        public double Load(string key, double fallback) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Load(key, fallback);
+        public string Load(string key, string fallback) => ExposureUnnoticed2.Scripts.Base.SaveRapper.Load(key, fallback);
     }
 }

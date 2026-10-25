@@ -5,7 +5,7 @@ The shared home of the restraint mods for SecretFlasherManaka (BepInEx 6 IL2CPP)
 on-screen list, the keys F and + / -, input blocking and conflict checks, so a restraint mod only has to do its own lock and
 its visible part. Single-player/offline only.
 
-**Status 0.1.0:** L3 (see Verification). Contents: [For players](#for-players) · [For modders](#for-modders) ·
+**Status 0.3.0:** L3 (see Verification). Contents: [For players](#for-players) · [For modders](#for-modders) ·
 [Config](#config-bepinexconfigcomlocalrestrainthubcfg) · [Verification](#verification)
 
 ## For players
@@ -41,7 +41,12 @@ its visible part. Single-player/offline only.
 | refusing restraints that hold the same body part (unless the player turned that off) | say which parts it holds (`Holds`) |
 | clearing the input your restraint forbids, the refusal message | say what it forbids (`Blocks`), or adjust input in `OnInput` |
 | the "Unlocking..." gauge for the selected restraint | report the attempt's progress (`Attempt`) |
-| - | the lock / struggle logic (SfmKit's `LockMachine` recommended), the model, the pose, its own save data |
+| a short tap of F as a second key, separate from the struggle (0.3.0) | act on it (`OnTap`) |
+| + / - held, for smooth adjustments (0.3.0) | read `HeldStep` |
+| the save hooks: right after the game writes / reads a slot, a `SaveSlot` to write / read your keys (0.3.0) | `OnSave`, `OnLoad` |
+| noticing a new game / the title replacing the game data without a load (0.3.0) | take it off (`OnNewGame`) |
+| whether a menu or the ring is open, whether she stands in an interaction area (0.3.0) | read `Hub.MenuOpen`, `Hub.InInteractArea`, `Hub.InputFree` |
+| - | the lock / struggle logic (SfmKit's `LockMachine` recommended), the model, the pose, what it saves |
 
 ### Quick start
 Copy **`mods/RestraintTemplate`** - a complete restraint with no model, compiled with the repo and checked in game. Its README
@@ -53,7 +58,7 @@ The registration is the whole API (full XML docs in `Hub.cs`, shipped as `Restra
 
 ```csharp
 [BepInPlugin("com.you.blindfold", "Blindfold", "1.0.0")]
-[BepInDependency(Hub.Guid, BepInDependency.DependencyFlags.HardDependency)] // loads after the hub; refused without it
+[BepInDependency(Hub.Guid, "0.3.0")] // loads after the hub; refused without it or with an older one
 public sealed class Plugin : BasePlugin
 {
     internal static Restraint Entry;
@@ -70,6 +75,9 @@ public sealed class Plugin : BasePlugin
             OnChosen = () => BlindfoldController.Machine.RequestLock(),
             Attempt = () => BlindfoldController.Machine.Attempt,
             Controls = "+/- tightness",
+            OnSave = slot => slot.Save("Blindfold.Locked", BlindfoldController.Machine.Worn),
+            OnLoad = slot => BlindfoldController.Machine.Restore(slot.Load("Blindfold.Locked", false), 1f),
+            OnNewGame = () => BlindfoldController.Machine.Reset(),
         };
         Hub.Register(Entry);
     }
@@ -78,6 +86,7 @@ public sealed class Plugin : BasePlugin
 // In the controller's Update:
 //   int step = Plugin.Entry.TakeStep();                       // +1 / -1 / 0, only while selected
 //   machine.Tick(Time.deltaTime, Plugin.Entry.StruggleHeld && machine.State == LockState.Locked, Random.value);
+//   if (Hub.InputFree) { ... your own keys ... }              // no menu, ring or interaction area
 ```
 
 ### Project setup
@@ -86,8 +95,8 @@ public sealed class Plugin : BasePlugin
   `RestraintHub.xml`). SfmKit's types are `internal`, so your copy and the hub's do not clash.
 - **Outside this repo:** `<Reference Include="RestraintHub"><HintPath>...\BepInEx\plugins\RestraintHub\RestraintHub.dll</HintPath>
   <Private>false</Private></Reference>`; ship your DLL in `BepInEx/plugins/<YourMod>/` and the hub's folder with it (or require it).
-- **Versions:** `Hub.Version`; require a newer hub with `[BepInDependency(Hub.Guid, "0.2.0")]`. The API is `Hub`, `Restraint`,
-  `BodyParts`, `Blocks`; `Plugin` and `HubController` are public only for the dev bridge and may change.
+- **Versions:** `Hub.Version`; require a newer hub with `[BepInDependency(Hub.Guid, "0.3.0")]`. The API is `Hub`, `Restraint`,
+  `SaveSlot`, `BodyParts`, `Blocks`; `Plugin` and `HubController` are public only for the dev bridge and may change.
 
 ### The `Restraint` fields
 
@@ -105,9 +114,15 @@ public sealed class Plugin : BasePlugin
 | `Attempt` | no | every frame while selected | 0..1 for the "Unlocking..." gauge |
 | `OnInput` | no | every input frame while worn, after blocking | edit the game's `InputData` for anything `Blocks` does not cover |
 | `Controls` | no | with the list | a few words for + / -; label + controls under ~30 characters (longer rows are shrunk) |
+| `OnTap` | no (0.3.0) | F tapped (released within 0.3 s) while selected, outside menus and interaction areas | a second use of F; with it set, `StruggleHeld` starts only after the tap time |
+| `OnSave` | no (0.3.0) | right after the game wrote a slot (not the system file) | `slot.Save(key, bool / int / double / string)` under your mod's keys |
+| `OnLoad` | no (0.3.0) | right after the game read a slot, before the stage starts | `slot.Load(key, fallback)`; the fallback is what older saves get |
+| `OnNewGame` | no (0.3.0) | the game data was replaced without a load (new game) | take it off; the title screen keeps the old data, so this comes with New Game |
 | `Selected` (hub) | - | set every frame | this restraint is the selected worn item |
 | `StruggleHeld` (hub) | - | set every frame | F held for it: selected, no menu / ring open, not in an interaction area |
 | `TakeStep()` (hub) | - | call once per frame | +1 / -1 / 0; only the selected restraint gets steps; held keys repeat |
+| `HeldStep` (hub, 0.3.0) | - | set every frame | +1 / -1 while + / - is held for the selected restraint, else 0 (smooth changes: `value += HeldStep * speed * dt`) |
+| `Hub.MenuOpen`, `Hub.InInteractArea`, `Hub.InputFree` (0.3.0) | - | set every frame | a game panel or the ring is open / she is in an interaction area (F is the area's) / neither |
 
 ### Rules of thumb
 - **Timing:** everything is on Unity's main thread. The hub's `Update` and yours run in no fixed order, so `StruggleHeld` and
@@ -119,8 +134,8 @@ public sealed class Plugin : BasePlugin
   so a pose skill or a hand animation may start while yours is worn - if yours poses those bones, it should keep posing them.
 - **Pose skills:** `Blocks.PoseSkills` stops new ones; end a running one yourself when yours goes on if you pose the same bones
   (`pca.PlayerAction.ChangeAction(ActionType.None)`, as Yoke does).
-- **Your own save data** goes in your own keys after `SaveManager.Save` / before the stage starts on `SaveManager.Load` (see the
-  template's `Patches.cs`); the hub only saves the shortcuts. Write the player's config only on the player's action
+- **Your own save data** goes in your own keys through `OnSave` / `OnLoad` (see the template's `Patches.cs`); since 0.3.0 no
+  restraint mod hooks `SaveManager` itself. Write the player's config only on the player's action
   (SpreaderBar once wrote a clamped value back on every launch and the setting crept).
 - **Keys:** the hub owns `B`, `V`, F and + / - for restraints. For your own keys, check the game's bindings first:
   `game call RestraintHub.HubController KeysInUse 'H P U'` (free today: B H P U V Y Backquote).
@@ -143,7 +158,8 @@ Pick an unused value in 9000-9998 and add it here (or to your mod's README if yo
 `game get RestraintHub.HubController::Status` ("selected X; list A; B;"), `game call RestraintHub.HubController SelectNext`,
 `key B --via input --expect "select:"`. To choose an entry without touching the player's shortcuts: hold the ring key, select
 the slot (`openRingList[page].currentAngle`), `game click --at 960 540`, then release (releasing over an entry assigns it).
-Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`, `shortcut:`, `save:` / `load:`.
+Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`, `shortcut:`, `save:` / `load:`, `tap:`,
+`new game:`.
 
 ## Config (`BepInEx/config/com.local.restrainthub.cfg`)
 | Key | Default | Meaning |
@@ -154,7 +170,8 @@ Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`,
 | Debug.Disable | 0 | bit 1 = block no input (negative control) |
 
 ## Verification
-- L1: `./tools/dev.ps1 test RestraintHub` (19: page padding, conflicts and their wording, the worn list and its selection);
+- L1: `./tools/dev.ps1 test RestraintHub` (26: page padding, conflicts and their wording, the worn list and its selection,
+  tap vs hold);
   `test SfmDev` (deploy / package dependencies, incl. the real projects).
 - L3 0.1.0 (2026-10-24, dev copy, first save; SpreaderBar 0.7.0, WallRestraint 1.2.0, Yoke 0.2.0):
   - load: "3 restraint entries from index 32 (page 5; 31 game entries, 1 empty)", shortcuts restored from the pre-hub save keys
@@ -185,6 +202,16 @@ Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`,
   - Ring keys 2-8 (user report: the restraint page only with key 1): `maxRingIndexSkill` was 3, key 2 showed 4 pages and X wrapped
     to page 1; set to 4 by hand it showed page 5. With the fix ("number-key rings page up to 5"): key 2 and key 3 reached page 5
     (Spreader Bar, Yoke there), released over their own entries (shortcuts unchanged); the limit stayed after two map changes. `selftest --game` green, dev copy state unchanged.
+
+- L3 0.3.0 (2026-10-25, Apartment, first save; Binders 0.1.1, NippleTether 0.2.0, SpreaderBar 0.8.2, WallRestraint 1.3.1,
+  Yoke 0.3.1 - their save hooks, new-game tracking and SpreaderBar's own menu / area checks moved here):
+  - all six registered, load report clean; load: "load: locked=False" from Binders, NippleTether, SpreaderBar, Yoke via `OnLoad`.
+  - `OnTap`: NippleTether, F tapped twice -> "tap: NippleTether", point mode on, off; held 3.6 s -> struggled free (no tap).
+  - `HeldStep`: + held -> the tether's length ran 119.6 -> 317 cm smoothly at its 0.4 m/s; config written once on release.
+  - Save at home (closet) with the yoke and the tether on: "save: locked=True" from both, False from the others; restart + load
+    -> "load: locked=True" for both, list "Nipple Tether; Yoke". Taken off and saved again afterwards.
+  - `OnNewGame`: not triggered in game - "Return to Title" keeps the same game data object (seen), so it comes with New Game;
+    the same pointer check the mods did themselves before.
 
 ## Known limits / next
 - A tap of a number key right after a stage change can be missed (the second tap worked).

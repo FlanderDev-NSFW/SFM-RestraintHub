@@ -19,6 +19,7 @@ namespace RestraintHub.Tests
             PaddingTests();
             ConflictTests();
             ListTests();
+            TapTests();
             Console.WriteLine(_passed + " passed, " + _failed + " failed");
             return _failed == 0 ? 0 : 1;
         }
@@ -70,6 +71,23 @@ namespace RestraintHub.Tests
             Check(!l.Select("Yoke"), "list: cannot select what is not worn");
             l.Update(new[] { "A", "B" });
             Check(l.Selected == "B", "list: two at once -> the later one in the given order is selected");
+        }
+
+        private static void TapTests()
+        {
+            var k = new TapOrHold();
+            bool tap = false;
+            for (int f = 0; f < 6; f++) tap |= k.Update(true, 1f / 60f);
+            tap |= k.Update(false, 1f / 60f);
+            Check(tap, "F tapped 0.1 s: a tap");
+            bool held = false;
+            tap = false;
+            for (int f = 0; f < 40; f++) { tap |= k.Update(true, 1f / 60f); held |= k.Holding; }
+            Check(held && !tap, "F held 0.67 s: holding (the struggle), no tap yet");
+            Check(!k.Update(false, 1f / 60f) && !k.Holding, "released after a hold: no tap");
+            k.Update(true, 1f / 60f);
+            k.Cancel();
+            Check(!k.Update(false, 1f / 60f), "a press cancelled (menu opened) is no tap");
         }
     }
 }
