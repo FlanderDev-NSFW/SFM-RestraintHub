@@ -1,7 +1,7 @@
 # RestraintHub
 
-The shared home of the restraint mods for SecretFlasherManaka (BepInEx 6 IL2CPP). **SpreaderBar**, **WallRestraint** and
-**Yoke** depend on it (their packages include it), and so can yours: the hub gives every restraint a ring entry, a place in an
+The shared home of the restraint mods for SecretFlasherManaka (BepInEx 6 IL2CPP). **SpreaderBar**, **WallRestraint**,
+**Yoke** and **Binders** depend on it (their packages include it), and so can yours: the hub gives every restraint a ring entry, a place in an
 on-screen list, the keys F and + / -, input blocking and conflict checks, so a restraint mod only has to do its own lock and
 its visible part. Single-player/offline only.
 
@@ -129,6 +129,7 @@ public sealed class Plugin : BasePlugin
 | 9100 | SpreaderBar |
 | 9200 | WallRestraint |
 | 9300 | Yoke |
+| 9400 | Binders |
 | 9900 | RestraintTemplate (example - replace it in your copy) |
 | 9999 | the hub's empty filler (reserved) |
 
