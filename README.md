@@ -133,6 +133,7 @@ public sealed class Plugin : BasePlugin
 | 9200 | WallRestraint |
 | 9300 | Yoke |
 | 9400 | Binders |
+| 9500 | NippleTether |
 | 9900 | RestraintTemplate (example - replace it in your copy) |
 | 9999 | the hub's empty filler (reserved) |
 
