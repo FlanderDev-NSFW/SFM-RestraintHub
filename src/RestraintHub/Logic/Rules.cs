@@ -72,6 +72,13 @@ namespace RestraintHub.Logic
             return null;
         }
 
+        /// <summary>The animations a restraint can refuse (hand actions, pose skills, peeing) - no longer refused while blocking is
+        /// off (the toggle key); running, moving and crouching stay blocked.</summary>
+        public const Blocks Animations = Blocks.HandActions | Blocks.PoseSkills | Blocks.Pee;
+
+        /// <summary>What is taken away of <paramref name="wanted"/>: everything while blocking is on, else all but <see cref="Animations"/>.</summary>
+        public static Blocks Effective(Blocks wanted, bool blocking) => blocking ? wanted : wanted & ~Animations;
+
         /// <summary>Plain words for the parts in <paramref name="parts"/> ("her arms and legs").</summary>
         public static string Describe(BodyParts parts)
         {

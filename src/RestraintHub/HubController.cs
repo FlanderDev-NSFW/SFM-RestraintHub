@@ -192,14 +192,16 @@ namespace RestraintHub
         [HideFromIl2Cpp]
         private bool SelectPressed() => Pressed(Plugin.SelectKey.Value, ref _selectDown);
 
-        /// <summary>The toggle key flips whether restraints that hold the same body parts block each other (saved in the config).</summary>
+        /// <summary>The toggle key flips whether restraints that hold the same body parts block each other, and whether they refuse
+        /// her animations (hand actions, pose skills, peeing); saved in the config.</summary>
         [HideFromIl2Cpp]
         private void WatchConflictToggle()
         {
             if (!Pressed(Plugin.ToggleConflictsKey.Value, ref _toggleDown)) return;
             bool on = !Plugin.BlockEachOther.Value;
             Plugin.BlockEachOther.Value = on;
-            Hub.Message(on ? "Restraints block each other again." : "Restraints no longer block each other (they may overlap).");
+            Hub.Message(on ? "Restraints block each other and her actions again."
+                           : "Restraints no longer block each other (they may overlap) or her actions.");
             Plugin.Logger.LogInfo("[SFM-ACCEPT] conflicts: " + (on ? "on" : "off"));
         }
 

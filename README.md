@@ -21,10 +21,12 @@ its visible part. Single-player/offline only.
   handcuffs selected, F goes to them), **+ / -** adjust it. Menus, the ring and interaction areas (closet, PC ...) keep their keys.
 - **Conflicts:** two restraints that hold the same body part (neck, arms, legs, her place) cannot be worn together - the second is
   refused ("Can't use the Wall Restraint: the Yoke holds her neck and arms."). **`V`** switches this off and on (kept in the
-  config); off, restraints may overlap and the one that poses a body part last wins it; the list's first row then reads
+  config); off, restraints may overlap and the one that poses a body part last wins it, and they no longer refuse her animations
+  (hand actions, pose skills, peeing - running, walking and crouching stay blocked); the list's first row then reads
   "Next restraint (overlap on)". Choosing a worn restraint in the ring selects it.
 - **Blocking:** while restraints are on, what they take away (running, walking, crouching, peeing, actions that need her hands,
   pose skills) is refused - hand actions and poses with "Can't do that with the <restraint> on.". Shift + move still ends a pose.
+  With blocking off (`V`) hand actions, pose skills and peeing are allowed.
   The game's "Unlocking..." gauge shows the selected restraint's struggle.
 
 ## For modders
@@ -113,7 +115,8 @@ public sealed class Plugin : BasePlugin
 - **Callbacks must not throw** (they run in the hub's frame and input hook). The hub catches and logs, but don't rely on it.
 - **Overlap is possible.** The player can switch blocking off (`V`): your restraint may be worn with one that poses the same
   bones. Pose in `LateUpdate`, place your model from the drawn bones in `Camera.onPreCull`, and expect the other pose to win
-  sometimes - never assume you own a bone.
+  sometimes - never assume you own a bone. Blocking off also lifts `Blocks.HandActions`, `PoseSkills` and `Pee` (`Rules.Animations`),
+  so a pose skill or a hand animation may start while yours is worn - if yours poses those bones, it should keep posing them.
 - **Pose skills:** `Blocks.PoseSkills` stops new ones; end a running one yourself when yours goes on if you pose the same bones
   (`pca.PlayerAction.ChangeAction(ActionType.None)`, as Yoke does).
 - **Your own save data** goes in your own keys after `SaveManager.Save` / before the stage starts on `SaveManager.Load` (see the
@@ -146,7 +149,7 @@ Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`,
 |---|---|---|
 | Keys.SelectNext | B | Input System key name that selects the next worn restraint |
 | Keys.ToggleBlocking | V | key that switches General.BlockEachOther (K is the game's Costume key; J, L, M, I, O are taken too) |
-| General.BlockEachOther | true | restraints that hold the same body part block each other |
+| General.BlockEachOther | true | restraints that hold the same body part block each other, and restraints refuse hand actions, pose skills and peeing |
 | Debug.Disable | 0 | bit 1 = block no input (negative control) |
 
 ## Verification
@@ -171,6 +174,9 @@ Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`,
     caught by the check). Game handcuffs on, blocking on: yoke chosen in the ring -> "refused: Yoke conflicts with handcuffs (Arms)";
     `V` -> "conflicts: off", message shown; yoke chosen again -> locked, list "Handcuffs; > Yoke", header "(overlap on)"
     (screenshot); `V` -> on again; struggled out of both.
+  - Animations follow `V` (0.2.0, 2026-10-25, user request): binders on, blocking on -> Armpit Squat (key 5) "refused: an action
+    blocked by binders"; yoke on, blocking off -> no refusal, the squat runs with her arms still in the yoke (`CurrentAction`
+    WakimiseCrouch, screenshot). While crawling the game itself does not start the squat.
   - List over the head preview (user request): bar on -> one row just above the preview, centred on it; yoke on too -> three
     rows, the bottom row in the same place, the others above it (screenshots).
   - Docs / template (2026-10-24): RestraintTemplate built against the hub, deployed with it (hub folder with `RestraintHub.xml`,

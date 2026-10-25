@@ -6,6 +6,7 @@ using ExposureUnnoticed2.ObjectUI.InGame.TempUnlockPanel;
 using ExposureUnnoticed2.Scripts.Base;
 using ExposureUnnoticed2.Scripts.InGame;
 using HarmonyLib;
+using RestraintHub.Logic;
 using UnityEngine;
 
 namespace RestraintHub
@@ -42,7 +43,7 @@ namespace RestraintHub
                 foreach (var r in Hub.All)
                 {
                     if (!r.Worn) continue;
-                    var b = r.Blocks?.Invoke() ?? Blocks.None;
+                    var b = Rules.Effective(r.Blocks?.Invoke() ?? Blocks.None, Plugin.BlockEachOther.Value);
                     if (first == null && (b & (Blocks.HandActions | Blocks.PoseSkills)) != 0) first = r;
                     blocks |= b;
                 }

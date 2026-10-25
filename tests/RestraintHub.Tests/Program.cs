@@ -26,6 +26,10 @@ namespace RestraintHub.Tests
         private static void PaddingTests()
         {
             // The game has 31 common ring entries [observed 2026-10-11]: one empty slot, the mods start the 5th page at index 32.
+            var yoke = Blocks.Running | Blocks.HandActions | Blocks.PoseSkills | Blocks.Pee;
+            Check(Rules.Effective(yoke, true) == yoke, "blocking on: everything the restraint forbids");
+            Check(Rules.Effective(yoke, false) == Blocks.Running, "blocking off: animations allowed, running still blocked");
+            Check(Rules.Effective(Blocks.Moving | Blocks.Crouching, false) == (Blocks.Moving | Blocks.Crouching), "blocking off: moving, crouching stay");
             Check(Rules.Padding(31) == 1, "padding: 31 game entries -> 1 empty slot");
             Check(Rules.Padding(32) == 0, "padding: full pages -> none");
             Check(Rules.Padding(25) == 7 && (25 + Rules.Padding(25)) % Rules.PageSize == 0, "padding: always ends a page");
