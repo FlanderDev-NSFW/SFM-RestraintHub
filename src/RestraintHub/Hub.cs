@@ -42,7 +42,7 @@ namespace RestraintHub
         /// <summary>
         /// Set by the mod (required). The <c>RingItemType</c> value of the ring entry: 9000..9998, unique among all restraint mods
         /// (9999 is the hub's empty filler). The game ignores values it does not know, so this only has to differ from the other
-        /// mods - see the registry in <c>mods/RestraintHub/README.md</c> (taken: 9100 SpreaderBar, 9200 WallRestraint, 9300 Yoke).
+        /// mods - see the registry in <c>docs/mods/RestraintHub.md</c> (taken: 9100 SpreaderBar, 9200 WallRestraint, 9300 Yoke).
         /// Never saved: the hub keeps the game's saved shortcut indices on game entries.
         /// </summary>
         public int RingValue;
@@ -225,7 +225,7 @@ namespace RestraintHub
         public const string Guid = Plugin.PluginGuid;
 
         /// <summary>The hub's version. A mod that needs a newer hub API can require it:
-        /// <c>[BepInDependency(Hub.Guid, "0.2.0")]</c> (BepInEx then refuses to load the mod with an older hub).</summary>
+        /// <c>[BepInDependency(Hub.Guid, "1.0.0")]</c> (BepInEx then refuses to load the mod with an older hub).</summary>
         public const string Version = Plugin.PluginVersion;
 
         internal static readonly List<Restraint> All = new List<Restraint>();

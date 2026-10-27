@@ -15,9 +15,9 @@ namespace RestraintHub
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public sealed class Plugin : BasePlugin
     {
-        public const string PluginGuid = "com.local.restrainthub";
+        public const string PluginGuid = "FlanderDev.SFM.RestraintHub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "0.3.0";
+        public const string PluginVersion = "1.0.0";
 
         internal static ManualLogSource Logger;
         public static ConfigEntry<string> SelectKey, ToggleConflictsKey;
