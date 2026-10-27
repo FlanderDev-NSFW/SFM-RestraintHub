@@ -9,7 +9,7 @@
     <RootNamespace>RestraintHub.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\mods\RestraintHub\Logic\**\*.cs" Link="Logic\%(RecursiveDir)%(Filename)%(Extension)" />
-    <Compile Include="..\..\src\SfmKit\Pure\**\*.cs" Link="SfmKit.Pure\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\RestraintHub\Logic\**\*.cs" Link="Logic\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\lib\SfmKit\Pure\**\*.cs" Link="SfmKit.Pure\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

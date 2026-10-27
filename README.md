@@ -34,10 +34,17 @@ In menus, the ring and interaction areas (closet, PC ...) the keys keep their no
 restraints block each other.
 
 ## For modders
-The API is documented in `RestraintHub.xml` next to the DLL; a guide and a template mod (RestraintTemplate) are in the
-source repository (`docs/mods/RestraintHub.md`, `mods/RestraintTemplate`).
+The API is documented in `RestraintHub.xml` next to the DLL; the guide is [docs/RestraintHub.md](docs/RestraintHub.md), and
+[SFM-RestraintTemplate](https://github.com/FlanderDev-NSFW/SFM-RestraintTemplate) is a template restraint to start from.
 
 ## Known limits
 - Right after a map change the first tap of a number key can be missed.
 
 Single-player / offline only. Code: MIT licence (`LICENSE.txt`).
+
+## Building from source
+- .NET SDK 8, and a copy of the game with BepInEx 6 IL2CPP started once: copy `Directory.Build.local.props.example` to
+  `Directory.Build.local.props` and set `GameDir`. Then `dotnet build src/RestraintHub/RestraintHub.csproj -c Release`.
+- The source of the mod is `src/RestraintHub` and its tests (`tests/`); `lib/SfmKit` is a copy of the shared [SfmKit](https://github.com/FlanderDev-NSFW/SfmKit)
+  library; `docs/` holds the developer notes.
+- Every push to `main` builds, tests and releases it (`.github/workflows/release.yml`, `build/ci.py`).
