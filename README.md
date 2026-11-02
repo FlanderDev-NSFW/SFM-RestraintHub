@@ -1,4 +1,4 @@
-# RestraintHub 1.0.0
+# RestraintHub 1.1.0
 
 The shared base for restraint mods in **Secret Flasher Manaka**. On its own it adds nothing you can see; the restraint mods
 (Spreader Bar, Wall Restraint, Yoke, Arm & Leg Binders, Nipple Tether) need it.
@@ -23,19 +23,26 @@ Then install the restraint mods you want the same way.
 | hold `F` | struggle free (the game's "Unlocking..." bar shows the progress) |
 | `+` / `-` | adjust it (width, height, length ... depending on the restraint) |
 | `V` | allow / forbid restraints that hold the same body part at the same time |
+| hold `V` (3 s) | take off **all** restraints - also ones a mission locked |
 
 In menus, the ring and interaction areas (closet, PC ...) the keys keep their normal job: step out of the area first.
 
 - **Blocking:** while a restraint is on, what it takes away (running, using her hands, pose skills ...) is refused with a
   message. With `V` switched off, restraints may overlap and fewer actions are refused.
+- **Missions** (optional, with [Custom Missions v2](https://f95zone.to/threads/263276/) 2.4): missions can put restraints on her
+  and lock them - for a while, or until the mission ends. A locked restraint shows `[locked]` (and the time left) in the list,
+  and F does not free her from it; holding `V` for 3 seconds always takes everything off. If the installed Custom Missions
+  is a version the hub was not made for, a message says so (can be switched off).
 
 ## Settings
-`BepInEx/config/FlanderDev.SFM.RestraintHub.cfg` (created on the first start): the keys for `B` and `V`, and whether
-restraints block each other.
+`BepInEx/config/FlanderDev.SFM.RestraintHub.cfg` (created on the first start): the keys for `B` and `V`, how long `V` must be
+held to take everything off, whether restraints block each other, and whether to warn about the Custom Missions version.
 
 ## For modders
 The API is documented in `RestraintHub.xml` next to the DLL; the guide is [docs/RestraintHub.md](docs/RestraintHub.md), and
 [SFM-RestraintTemplate](https://github.com/FlanderDev-NSFW/SFM-RestraintTemplate) is a template restraint to start from.
+Mission authors: the `RtHub_*` script functions and events are in [docs/Missions.md](docs/Missions.md), with an example
+mission in [examples/missions/CaughtRestrained](examples/missions/CaughtRestrained).
 
 ## Known limits
 - Right after a map change the first tap of a number key can be missed.

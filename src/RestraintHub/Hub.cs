@@ -145,6 +145,34 @@ namespace RestraintHub
         /// </summary>
         public Action OnNewGame;
 
+        /// <summary>
+        /// Set by the mod (optional, hub 1.1.0). Put it on for a mission script or the hub (no player message): return null when it
+        /// started closing, else why not, in a few plain words ("no wall in front of her"). Only called while it is off and the
+        /// hub found no conflict. Null: the hub calls <see cref="OnChosen"/> instead (which shows its own messages) and reports a
+        /// refusal when it is not worn right after.
+        /// </summary>
+        public Func<string> PutOn;
+
+        /// <summary>
+        /// Set by the mod (optional, hub 1.1.0). Whether <see cref="PutOn"/> would work right here, without putting it on: null =
+        /// yes, else why not (needs a wall, room on the floor ...). Leave null when it can only fail for rare reasons. Missions
+        /// call it through <c>RtHub_CanApply</c> before choosing a restraint.
+        /// </summary>
+        public Func<string> CanPutOn;
+
+        /// <summary>
+        /// Set by the mod (recommended, hub 1.1.0). Take it off now, without a struggle - a mission removes it, its timer ran out,
+        /// or the player holds the escape key (<c>Keys.ToggleBlocking</c>, held). Must leave the body as without the restraint.
+        /// Null: missions cannot remove it and the escape key leaves it on.
+        /// </summary>
+        public Action TakeOff;
+
+        /// <summary>
+        /// Set by the mod (optional, hub 1.1.0). Values missions may read and change while it is worn (<c>RtHub_Get</c> /
+        /// <c>RtHub_Set</c>), usually what + / - change. A mission's change is not stored in the player's config.
+        /// </summary>
+        public IReadOnlyList<RestraintSetting> Settings;
+
         // --- set by the hub ------------------------------------------------------------------------------------------------
 
         /// <summary>
@@ -224,8 +252,9 @@ namespace RestraintHub
         /// <summary>The hub's BepInEx GUID, for <c>[BepInDependency(Hub.Guid)]</c>.</summary>
         public const string Guid = Plugin.PluginGuid;
 
-        /// <summary>The hub's version. A mod that needs a newer hub API can require it:
-        /// <c>[BepInDependency(Hub.Guid, "1.0.0")]</c> (BepInEx then refuses to load the mod with an older hub).</summary>
+        /// <summary>The hub's version. A mod that needs a newer hub API can require it with a version <i>range</i>:
+        /// <c>[BepInDependency(Hub.Guid, "^1.1.0")]</c> (1.1.0 up to, not including, 2.0.0). A bare <c>"1.1.0"</c> means exactly
+        /// 1.1.0 to BepInEx 6: the mod would not load with any later hub.</summary>
         public const string Version = Plugin.PluginVersion;
 
         internal static readonly List<Restraint> All = new List<Restraint>();
@@ -273,6 +302,23 @@ namespace RestraintHub
         /// <summary>Show a line in the game's message bar (top of the screen, the game's warning style). Safe to call any time;
         /// does nothing outside a stage.</summary>
         public static void Message(string text) => SfmKit.Game.GameUi.Message(text);
+    }
+
+    /// <summary>
+    /// One value of a restraint that missions may read and change (<see cref="Restraint.Settings"/>), e.g. the spreader bar's
+    /// width in cm. Hub 1.1.0.
+    /// </summary>
+    public sealed class RestraintSetting
+    {
+        /// <summary>Name used by scripts, lower case: <c>"width"</c>.</summary>
+        public string Name;
+        /// <summary>The unit, for documentation and the log: <c>"cm"</c>.</summary>
+        public string Unit;
+        /// <summary>The current value; called only while the restraint is worn.</summary>
+        public Func<float> Get;
+        /// <summary>Change it (only while worn): return null when done - clamped to what fits, read back with <see cref="Get"/> - or
+        /// why not. Must not write the player's config.</summary>
+        public Func<float, string> Set;
     }
 
     /// <summary>

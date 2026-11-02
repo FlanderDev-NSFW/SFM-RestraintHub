@@ -140,7 +140,8 @@ namespace RestraintHub
                     SaveRapper.Save(r.ShortcutSaveKey, r.Shortcuts);
                     s += " " + r.Id + "=" + r.Shortcuts;
                 }
-                Plugin.Logger.LogInfo("[SFM-ACCEPT] save: shortcuts" + s + " path=" + SaveRapper.currentDataPath);
+                SaveRapper.Save(Missions.SaveKey, Missions.Locks.Serialize());
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] save: shortcuts" + s + (Missions.Locks.Count == 0 ? "" : ", " + Missions.Locks.Count + " mission locks") + " path=" + SaveRapper.currentDataPath);
                 var slot = new SaveSlot(SaveRapper.currentDataPath);
                 foreach (var r in Hub.All)
                 {
@@ -167,6 +168,7 @@ namespace RestraintHub
                     s += " " + r.Id + "=" + r.Shortcuts;
                 }
                 c.OnSaveLoaded();
+                Missions.OnLoad(SaveRapper.Load(Missions.SaveKey, ""));
                 Plugin.Logger.LogInfo("[SFM-ACCEPT] load: shortcuts" + s + " path=" + SaveRapper.currentDataPath);
                 var slot = new SaveSlot(SaveRapper.currentDataPath);
                 foreach (var r in Hub.All)

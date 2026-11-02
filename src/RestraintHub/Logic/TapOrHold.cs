@@ -15,6 +15,9 @@ namespace RestraintHub.Logic
         /// <summary>The key has been held longer than a tap.</summary>
         public bool Holding { get; private set; }
 
+        /// <summary>How long the key has been held down (0 when up).</summary>
+        public float HeldFor => _down < 0f ? 0f : _down;
+
         /// <summary>True on the update the key was released after a tap.</summary>
         public bool Update(bool pressed, float dt)
         {

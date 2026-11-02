@@ -83,7 +83,7 @@ namespace RestraintHub
             if (List.Update(worn)) Plugin.Logger.LogInfo("[SFM-ACCEPT] list: " + Describe());
 
             bool menus = panel || GameUi.RingOpen();
-            if (!menus) WatchConflictToggle();
+            WatchToggleKey(menus);
             if (!menus && SelectPressed() && List.Items.Count > 1)
             {
                 List.Next();
@@ -101,11 +101,13 @@ namespace RestraintHub
             {
                 r.Selected = r.Id == List.Selected;
                 r.HeldStep = r.Selected ? held : 0;
+                bool may = !Missions.StruggleLocked(r); // a mission may forbid struggling out
                 if (r.Selected && step != 0) r.PendingStep = step;
                 if (!r.Selected) r.PendingStep = 0;
                 if (r.OnTap == null)
                 {
-                    r.StruggleHeld = r.Selected && struggle;
+                    r.StruggleHeld = r.Selected && struggle && may;
+                    if (r.Selected && struggle && !may) Missions.SayLocked(r);
                     continue;
                 }
                 // A tap of F is the restraint's own (OnTap); only holding it longer is the struggle.
@@ -116,12 +118,15 @@ namespace RestraintHub
                     continue;
                 }
                 bool tapped = r.Tap.Update(InteractHeld, Time.deltaTime);
-                r.StruggleHeld = r.Tap.Holding;
+                r.StruggleHeld = r.Tap.Holding && may;
+                if (r.Tap.Holding && !may) Missions.SayLocked(r);
                 if (!tapped) continue;
                 Plugin.Logger.LogInfo("[SFM-ACCEPT] tap: " + r.Id);
                 try { r.OnTap(); }
                 catch (Exception e) { Fail(r.Id + ".OnTap", e); }
             }
+            try { Missions.Tick(menus); }
+            catch (Exception e) { Fail("missions", e); }
             Status = Describe();
             _hud.Show(this);
         }
@@ -170,7 +175,7 @@ namespace RestraintHub
                 if (r.Worn)
                 {
                     List.Select(r.Id);
-                    Hub.Message(r.Name + " is on - hold F to struggle free.");
+                    Hub.Message(Missions.StruggleLocked(r) ? r.Name + " is locked - you can't struggle out." : r.Name + " is on - hold F to struggle free.");
                     Plugin.Logger.LogInfo("[SFM-ACCEPT] select: " + Describe());
                     return;
                 }
@@ -199,7 +204,8 @@ namespace RestraintHub
 
         // --- the hub's keys: select the next restraint, let restraints overlap -----------------------------------------------
 
-        private bool _selectDown, _toggleDown;
+        private bool _selectDown, _escaped, _escapeHinted;
+        private readonly TapOrHold _toggle = new TapOrHold();
 
         [HideFromIl2Cpp]
         private static bool Pressed(string keyName, ref bool wasDown)
@@ -215,17 +221,35 @@ namespace RestraintHub
         [HideFromIl2Cpp]
         private bool SelectPressed() => Pressed(Plugin.SelectKey.Value, ref _selectDown);
 
-        /// <summary>The toggle key flips whether restraints that hold the same body parts block each other, and whether they refuse
-        /// her animations (hand actions, pose skills, peeing); saved in the config.</summary>
+        /// <summary>The toggle key: a tap flips whether restraints that hold the same body parts block each other, and whether
+        /// they refuse her animations (hand actions, pose skills, peeing; saved in the config). Held for Keys.EscapeHoldSeconds
+        /// it takes off every restraint - the way out of anything a mission locked.</summary>
         [HideFromIl2Cpp]
-        private void WatchConflictToggle()
+        private void WatchToggleKey(bool menus)
         {
-            if (!Pressed(Plugin.ToggleConflictsKey.Value, ref _toggleDown)) return;
-            bool on = !Plugin.BlockEachOther.Value;
-            Plugin.BlockEachOther.Value = on;
-            Hub.Message(on ? "Restraints block each other and her actions again."
-                           : "Restraints no longer block each other (they may overlap) or her actions.");
-            Plugin.Logger.LogInfo("[SFM-ACCEPT] conflicts: " + (on ? "on" : "off"));
+            var kb = Keyboard.current;
+            bool down = !menus && kb != null && Enum.TryParse(Plugin.ToggleConflictsKey.Value, true, out Key key) && key != Key.None && kb[key].isPressed;
+            if (menus) { _toggle.Cancel(); _escaped = _escapeHinted = false; return; }
+            bool tapped = _toggle.Update(down, Time.unscaledDeltaTime);
+            if (!down) _escaped = _escapeHinted = false;
+            if (tapped)
+            {
+                bool on = !Plugin.BlockEachOther.Value;
+                Plugin.BlockEachOther.Value = on;
+                Hub.Message(on ? "Restraints block each other and her actions again."
+                               : "Restraints no longer block each other (they may overlap) or her actions.");
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] conflicts: " + (on ? "on" : "off"));
+                return;
+            }
+            if (!_toggle.Holding || _escaped) return;
+            if (!_escapeHinted && List.Items.Count > 0)
+            {
+                _escapeHinted = true;
+                Hub.Message("Keep holding " + Plugin.ToggleConflictsKey.Value + " to take off all restraints.");
+            }
+            if (_toggle.HeldFor < Plugin.EscapeSeconds.Value) return;
+            _escaped = true;
+            Missions.EscapeAll();
         }
 
         /// <summary>Warn once for each of the hub's keys that is one of the game's own bindings (the game binds keys by action).</summary>
@@ -305,6 +329,7 @@ namespace RestraintHub
             if (ptr == _gameData) return;
             _gameData = ptr;
             Ring.Reset();
+            Missions.OnNewGame();
             foreach (var r in Hub.All)
             {
                 if (r.OnNewGame == null) continue;

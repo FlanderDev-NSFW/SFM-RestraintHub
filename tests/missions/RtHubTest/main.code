@@ -1,0 +1,127 @@
+# RtHubTest - test harness for RestraintHub's Custom Missions v2 functions (not for players).
+# Commands are files: create  cmd/<number> <command>.txt  in this folder (any content); each new file runs once, in name order.
+# Results and RtHub_* events go to the BepInEx log as lines starting with [RtHubTest:<tag>].
+# Commands (use - to leave an option out):
+#   info | worn | ison ID | can ID | owner ID | remaining ID | settings ID | get ID NAME | set ID NAME VALUE | lasterror
+#   apply ID [struggle 1/0] [seconds] [onEnd]     (from the polling listener's thread)
+#   remove ID
+#   hold ID [onEnd]                              (from a new thread kept in rt_holder)
+#   drop                                         (rt_holder = null: the thread is no longer referenced)
+#   raw FUNCTION [ID]                            (call any function with one id argument)
+
+rt_tag = "A"
+rt_seen = CreateList()
+rt_holder = null
+rt_main = CreateThread("rt_main")
+
+rt_main:
+	# Commands from an earlier session are not run again.
+	rt_seen = GetFiles("cmd")
+	Log(Format("[RtHubTest:{0}] start, functions {1}, api {2}, {3} old commands skipped", rt_tag, FunctionExists("RtHub_Apply"), RtHub_ApiVersion(), rt_seen.Count()))
+	rt_poll = CreateListener("rt_poll")
+	rt_ev1 = CreateEventListener("rt_on_event", "RtHub_Applied")
+	rt_ev2 = CreateEventListener("rt_on_event", "RtHub_Removed")
+	rt_ev3 = CreateEventListener("rt_on_event", "RtHub_Escaped")
+
+rt_poll:
+	files = GetFiles("cmd")
+	i = 0
+	while i < files.Count()
+		f = files[i]
+		i += 1
+		if !rt_seen.Contains(f)
+			rt_seen.Insert(f)
+			name = f
+			cut = Find("cmd", name)
+			if cut >= 0
+				name = SubString(name, start=cut+4)
+			if Length(name) > 4
+				name = SubString(name, end=Length(name)-5)
+			rt_run(line=name)
+
+rt_on_event:
+	Log(Format("[RtHubTest:{0}] event {1} id={2} by={3} owner={4}", rt_tag, _eventname, _eventdata.id, _eventdata.by, _eventdata.owner))
+
+rt_run:
+	w = rt_split(text=line)
+	# w[0] is the number
+	op = w[1]
+	r = "?"
+	if op == "info"
+		r = "list " + rt_show(v=RtHub_List()) + " worn " + rt_show(v=RtHub_Worn())
+	elseif op == "worn"
+		r = rt_show(v=RtHub_Worn())
+	elseif op == "ison"
+		r = RtHub_IsOn(w[2])
+	elseif op == "can"
+		r = RtHub_CanApply(w[2])
+	elseif op == "owner"
+		r = RtHub_Owner(w[2])
+	elseif op == "remaining"
+		r = RtHub_Remaining(w[2])
+	elseif op == "settings"
+		r = rt_show(v=RtHub_Settings(w[2]))
+	elseif op == "get"
+		r = RtHub_Get(w[2], w[3])
+	elseif op == "set"
+		r = RtHub_Set(w[2], w[3], ToNumber(w[4]))
+	elseif op == "lasterror"
+		r = RtHub_LastError()
+	elseif op == "apply"
+		p = CreateList()
+		p["id"] = w[2]
+		if w.Count() > 3 && w[3] != "-"
+			p["struggle"] = w[3] == "1"
+		if w.Count() > 4 && w[4] != "-"
+			p["seconds"] = ToNumber(w[4])
+		if w.Count() > 5 && w[5] != "-"
+			p["onEnd"] = w[5]
+		r = CallFunction("RtHub_Apply", p)
+	elseif op == "remove"
+		r = RtHub_Remove(w[2])
+	elseif op == "hold"
+		hold_end = "-"
+		if w.Count() > 3
+			hold_end = w[3]
+		rt_holder = CreateThread("rt_hold", hold_id=w[2], hold_end=hold_end)
+		r = "thread started"
+	elseif op == "drop"
+		rt_holder = null
+		r = "holder dropped"
+	elseif op == "raw"
+		p = CreateList()
+		if w.Count() > 3
+			p["id"] = w[3]
+		r = CallFunction(w[2], p)
+		if GetType(r) == "List"
+			r = rt_show(v=r)
+	Log(Format("[RtHubTest:{0}] {1} -> {2} (error: '{3}')", rt_tag, line, r, RtHub_LastError()))
+
+rt_hold:
+	if hold_end == "-"
+		hr = RtHub_Apply(hold_id)
+	else
+		hr = RtHub_Apply(hold_id, onEnd=hold_end)
+	Log(Format("[RtHubTest:{0}] holder thread: apply {1} -> {2} (error: '{3}')", rt_tag, hold_id, hr, RtHub_LastError()))
+
+rt_split:
+	_result = CreateList()
+	rest = text
+	pos = Find(" ", rest)
+	while pos >= 0
+		if pos > 0
+			_result.Insert(SubString(rest, end=pos-1))
+		rest = SubString(rest, start=pos+1)
+		pos = Find(" ", rest)
+	if Length(rest) > 0
+		_result.Insert(rest)
+
+rt_show:
+	_result = "["
+	j = 0
+	while j < v.Count()
+		if j > 0
+			_result = _result + ","
+		_result = _result + v[j]
+		j += 1
+	_result = _result + "]"

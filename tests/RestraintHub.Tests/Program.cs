@@ -20,6 +20,7 @@ namespace RestraintHub.Tests
             ConflictTests();
             ListTests();
             TapTests();
+            LockTests();
             Console.WriteLine(_passed + " passed, " + _failed + " failed");
             return _failed == 0 ? 0 : 1;
         }
@@ -88,6 +89,79 @@ namespace RestraintHub.Tests
             k.Update(true, 1f / 60f);
             k.Cancel();
             Check(!k.Update(false, 1f / 60f), "a press cancelled (menu opened) is no tap");
+        }
+
+        private static void LockTests()
+        {
+            var k = new TapOrHold();
+            for (int f = 0; f < 180; f++) k.Update(true, 1f / 60f);
+            Check(Math.Abs(k.HeldFor - 179f / 60f) < 1e-3f && k.Holding, "V held 3 s: HeldFor counts (escape)");
+            k.Update(false, 1f / 60f);
+            Check(k.HeldFor == 0f, "released: HeldFor 0");
+
+            var locks = new MissionLocks();
+            var worn = new HashSet<string>();
+            var running = new HashSet<string> { "Hunt", "Other" };
+            var endedThreads = new HashSet<object>();
+            List<(MissionLock Lock, LockAction Action, string Why)> Tick(float dt, bool clock = true) =>
+                locks.Tick(dt, clock, id => worn.Contains(id), l => endedThreads.Contains(l.Thread), p => running.Contains(p));
+
+            object t1 = new object();
+            var l1 = locks.Take("Yoke", "Hunt", t1, false, 10f, null, false);
+            Check(l1.Owner == "Hunt" && !l1.Struggle && l1.Remaining == 10f && l1.OnEnd == LockEnd.Thread && !l1.Seen, "take: options, defaults");
+            Check(locks.Refuses("Yoke", "Hunt") == null && locks.Refuses("Yoke", "Other") != null && locks.Refuses("Bar", "Other") == null,
+                  "owner: only the owning mission may change it; unowned free");
+            Check(Tick(1f).Count == 0 && l1.Remaining == 10f, "not yet worn: waits, timer does not run");
+            worn.Add("Yoke");
+            Check(Tick(1f).Count == 0 && l1.Seen && l1.Remaining == 9f, "worn: seen, timer runs");
+            Check(Tick(5f, false).Count == 0 && l1.Remaining == 9f, "paused / menu: timer stops");
+            locks.Take("Yoke", "Hunt", null, null, null, LockEnd.Mission, true);
+            Check(!l1.Struggle && l1.Remaining == 9f && l1.OnEnd == LockEnd.Mission && l1.Thread == t1, "update: unset options keep their values");
+            var r = Tick(9.5f);
+            Check(r.Count == 1 && r[0].Action == LockAction.TakeOff && r[0].Why == "timer" && locks.Get("Yoke") == null, "timer ends: take off");
+
+            locks.Take("Bar", "Hunt", t1, null, null, null, true);
+            worn.Add("Bar");
+            endedThreads.Add(t1);
+            r = Tick(0.1f);
+            Check(r.Count == 1 && r[0].Action == LockAction.TakeOff && r[0].Why == "thread ended", "thread ends (default onEnd): take off");
+
+            object t2 = new object();
+            locks.Take("Bar", "Hunt", t2, null, null, LockEnd.Mission, true);
+            endedThreads.Add(t2);
+            Check(Tick(0.1f).Count == 0, "onEnd mission: the thread ending does not matter");
+            running.Remove("Hunt");
+            r = Tick(0.1f);
+            Check(r.Count == 1 && r[0].Action == LockAction.TakeOff && r[0].Why == "mission ended", "onEnd mission: mission stops -> take off");
+
+            locks.Take("Bar", "Other", t2, false, 0f, LockEnd.Keep, true);
+            Check(Tick(0.1f).Count == 0, "onEnd keep: thread end ignored");
+            running.Remove("Other");
+            r = Tick(0.1f);
+            Check(r.Count == 1 && r[0].Action == LockAction.Forget && worn.Contains("Bar"), "onEnd keep: mission stops -> let go, stays on");
+
+            running.Add("Hunt");
+            locks.Take("Bar", "Hunt", null, null, null, LockEnd.Mission, true);
+            worn.Remove("Bar");
+            r = Tick(0.1f);
+            Check(r.Count == 1 && r[0].Action == LockAction.Forget && r[0].Why == "came off", "came off (struggle / escape): forgotten");
+            locks.Take("Bar", "Hunt", null, null, null, null, false);
+            Tick(3f);
+            r = Tick(3f);
+            Check(r.Count == 1 && r[0].Why == "never went on", "never went on within the timeout: forgotten");
+
+            worn.Add("Yoke");
+            locks.Take("Yoke", "Hunt\tx", t1, false, 61.5f, LockEnd.Keep, true);
+            locks.Take("Bar", "Other", null, true, 0f, null, false);
+            string saved = locks.Serialize();
+            var back = new MissionLocks();
+            back.Restore(saved + "\nbroken line\nX\tY\t1\tnan\tthread\nZ\tY\t1\t3\tforever");
+            var y = back.Get("Yoke");
+            Check(back.Count == 2 && y != null && y.Owner == "Hunt x" && !y.Struggle && Math.Abs(y.Remaining - 61.5f) < 1e-3f && y.OnEnd == LockEnd.Keep
+                  && y.Thread == null && !y.Seen && back.Get("Bar").Struggle, "save: round trip (tab in a name cleaned), bad lines skipped");
+            back.Restore("");
+            Check(back.Count == 0, "save: empty -> no locks");
+            Check(MissionLock.TryParseEnd(" Mission ", out var e1) && e1 == LockEnd.Mission && !MissionLock.TryParseEnd("later", out _), "onEnd names");
         }
     }
 }

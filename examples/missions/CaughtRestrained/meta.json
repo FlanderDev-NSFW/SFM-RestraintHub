@@ -1,0 +1,21 @@
+{
+	"title": { "En": "Caught & Restrained" },
+	"description": { "En": "When someone finds her, a restraint that fits where she stands is locked on for a while instead of a Game Over. Needs RestraintHub 1.1 and at least one restraint mod. An example for mission authors." },
+	"defaultactive": false,
+	"settings": [
+		{
+			"name": "seconds",
+			"title": "Locked for (seconds)",
+			"type": "Integer",
+			"minvalue": 10,
+			"maxvalue": 600,
+			"default": 60
+		},
+		{
+			"name": "struggle",
+			"title": "She may struggle out (F)",
+			"type": "Boolean",
+			"default": false
+		}
+	]
+}

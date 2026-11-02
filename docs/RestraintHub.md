@@ -35,6 +35,14 @@ its visible part. Single-player/offline only.
   pose skills) is refused - hand actions and poses with "Can't do that with the <restraint> on.". Shift + move still ends a pose.
   With blocking off (`V`) hand actions, pose skills and peeing are allowed.
   The game's "Unlocking..." gauge shows the selected restraint's struggle.
+- **Escape (1.1.0):** holding **`V`** for `Keys.EscapeHoldSeconds` (3 s) takes off every restraint that has `TakeOff`, also ones
+  a mission locked ("Keep holding V to take off all restraints." after 0.3 s). A tap still toggles blocking (on release).
+- **Missions (1.1.0):** with Custom Missions v2 installed (soft dependency, bound by reflection - `Cm2.cs`), mission scripts get
+  `RtHub_*` functions and events (`Missions.cs`; the author's reference is [Missions.md](Missions.md)). A mission's lock
+  (`Logic/MissionLocks.cs`) can forbid struggling ("The Yoke is locked - you can't struggle out.", the list shows
+  `[locked 1:23]` and no F), run a timer and end with the mission's thread / the mission; it is saved (`RestraintHub.MissionLocks`,
+  one line per lock) and owned by the mission's name after a load. A Custom Missions version other than 2.4.x, or members that
+  are missing, show a warning once in game (`General.WarnMissions`) and always in the log.
 
 ## For modders
 
@@ -65,7 +73,7 @@ The registration is the whole API (full XML docs in `Hub.cs`, shipped as `Restra
 
 ```csharp
 [BepInPlugin("com.you.blindfold", "Blindfold", "1.0.0")]
-[BepInDependency(Hub.Guid, "0.3.0")] // loads after the hub; refused without it or with an older one
+[BepInDependency(Hub.Guid, "^1.1.0")] // loads after the hub; refused without it, with an older one or with 2.x
 public sealed class Plugin : BasePlugin
 {
     internal static Restraint Entry;
@@ -102,8 +110,11 @@ public sealed class Plugin : BasePlugin
   `RestraintHub.xml`). SfmKit's types are `internal`, so your copy and the hub's do not clash.
 - **Outside this repo:** `<Reference Include="RestraintHub"><HintPath>...\BepInEx\plugins\RestraintHub\RestraintHub.dll</HintPath>
   <Private>false</Private></Reference>`; ship your DLL in `BepInEx/plugins/<YourMod>/` and the hub's folder with it (or require it).
-- **Versions:** `Hub.Version`; require a newer hub with `[BepInDependency(Hub.Guid, "0.3.0")]`. The API is `Hub`, `Restraint`,
-  `SaveSlot`, `BodyParts`, `Blocks`; `Plugin` and `HubController` are public only for the dev bridge and may change.
+- **Versions:** `Hub.Version`; require a newer hub with a range: `[BepInDependency(Hub.Guid, "^1.1.0")]`. **A bare version is an
+  exact match** in BepInEx 6: the 1.0 mods (`"1.0.0"`) were refused by hub 1.1.0 ("Could not load [RestraintTemplate 1.0.0]
+  because it has missing dependencies: FlanderDev.SFM.RestraintHub (1.0.0)") [observed 2026-11-02]. The API is `Hub`, `Restraint`,
+  `RestraintSetting`, `SaveSlot`, `BodyParts`, `Blocks`; `Plugin`, `HubController` and `Missions` are public only for the dev
+  bridge and may change.
 
 ### The `Restraint` fields
 
@@ -125,6 +136,10 @@ public sealed class Plugin : BasePlugin
 | `OnSave` | no (0.3.0) | right after the game wrote a slot (not the system file) | `slot.Save(key, bool / int / double / string)` under your mod's keys |
 | `OnLoad` | no (0.3.0) | right after the game read a slot, before the stage starts | `slot.Load(key, fallback)`; the fallback is what older saves get |
 | `OnNewGame` | no (0.3.0) | the game data was replaced without a load (new game) | take it off; the title screen keeps the old data, so this comes with New Game |
+| `PutOn` | no (1.1.0) | a mission puts it on (`RtHub_Apply`), while off and nothing conflicts | put it on without a player message; return null when it is closing, else why not in a few words. Null: `OnChosen` is called and a refusal reported when not worn right after |
+| `CanPutOn` | no (1.1.0) | `RtHub_CanApply` | would `PutOn` work here, without side effects (null = yes)? For place-dependent restraints (WallRestraint and Hogtie run their placement with a `check` flag) |
+| `TakeOff` | recommended (1.1.0) | `RtHub_Remove`, a mission's timer / end, the escape key | take it off at once; leave the body as without it. Null: missions can't remove it and the escape key leaves it on |
+| `Settings` | no (1.1.0) | `RtHub_Get` / `RtHub_Set` while worn | `RestraintSetting { Name, Unit, Get, Set }`; `Set` returns null or why not, clamps, and must not write the player's config |
 | `Selected` (hub) | - | set every frame | this restraint is the selected worn item |
 | `StruggleHeld` (hub) | - | set every frame | F held for it: selected, no menu / ring open, not in an interaction area |
 | `TakeStep()` (hub) | - | call once per frame | +1 / -1 / 0; only the selected restraint gets steps; held keys repeat |
@@ -167,19 +182,27 @@ Pick an unused value in 9000-9998 and add it here (or to your mod's README if yo
 `key B --via input --expect "select:"`. To choose an entry without touching the player's shortcuts: hold the ring key, select
 the slot (`openRingList[page].currentAngle`), `game click --at 960 540`, then release (releasing over an entry assigns it).
 Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`, `shortcut:`, `save:` / `load:`, `tap:`,
-`new game:`.
+`new game:`, `escape:`, `missions:` (connected), `mission '<name>':` (calls, refusals, locks ending), `event:`, `warning`.
+Missions: `game get RestraintHub.Missions::Status` (locks and the loaded missions), `game call RestraintHub.Missions
+SetMissionActive <name> false` (as the phone does; `--allow-invoke`), and the test mission `tests/missions/RtHubTest` (copy it to
+`CustomMissions2/RtHubTestA`; create `cmd/<n> <command>.txt` files - see its header - and read `[RtHubTest:A]` lines in the
+log). "Found by someone" can be triggered with `MSYS_NO_PATHCONV=1 ./tools/dev.ps1 game call
+SFM_custom_mission_v2.Objects.PatchPlayerController OnFoundStrangerEvent "=/Level/.../NpcLocation/Npc(Clone)"`.
 
 ## Config (`BepInEx/config/FlanderDev.SFM.RestraintHub.cfg`)
 | Key | Default | Meaning |
 |---|---|---|
 | Keys.SelectNext | B | Input System key name that selects the next worn restraint |
-| Keys.ToggleBlocking | V | key that switches General.BlockEachOther (K is the game's Costume key; J, L, M, I, O are taken too) |
+| Keys.ToggleBlocking | V | tapped: switches General.BlockEachOther (K is the game's Costume key; J, L, M, I, O are taken too); held: the escape |
+| Keys.EscapeHoldSeconds | 3 | how long to hold Keys.ToggleBlocking to take off all restraints (1-10) |
 | General.BlockEachOther | true | restraints that hold the same body part block each other, and restraints refuse hand actions, pose skills and peeing |
+| General.WarnMissions | true | show the Custom Missions version / connection warning in game (the log always has it) |
 | Debug.Disable | 0 | bit 1 = block no input (negative control) |
 
 ## Verification
-- L1: `./tools/dev.ps1 test RestraintHub` (26: page padding, conflicts and their wording, the worn list and its selection,
-  tap vs hold);
+- L1: `./tools/dev.ps1 test RestraintHub` (45: page padding, conflicts and their wording, the worn list and its selection,
+  tap vs hold, the escape hold time, mission locks: owners, option updates, timers and pauses, thread / mission / keep ends,
+  never-worn and came-off locks, the save format);
   `test SfmDev` (deploy / package dependencies, incl. the real projects).
 - L3 0.1.0 (2026-10-24, dev copy, first save; SpreaderBar 0.7.0, WallRestraint 1.2.0, Yoke 0.2.0):
   - load: "3 restraint entries from index 32 (page 5; 31 game entries, 1 empty)", shortcuts restored from the pre-hub save keys
@@ -221,7 +244,42 @@ Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`,
   - `OnNewGame`: not triggered in game - "Return to Title" keeps the same game data object (seen), so it comes with New Game;
     the same pointer check the mods did themselves before.
 
+- L3 1.1.0 (2026-11-02, first save, Custom Missions v2 2.4.0; Binders 1.1.0, Hogtie 0.2.0, NippleTether 1.1.0, SpreaderBar
+  1.1.0, WallRestraint 1.5.0, Yoke 1.1.0; two copies of the test mission, A and B):
+  - load: "connected to Custom Missions v2 2.4.0, RtHub_* functions registered (API 1)"; the missions see
+    `FunctionExists("RtHub_Apply")` true, `RtHub_List()` = all six, lists / strings / numbers / booleans come through.
+  - Refusals with reasons: unknown id, no id, bad `onEnd`, `CanApply` Hogtie "something is in the way" (indoors) / WallRestraint
+    "no wall in front of her" (street), SpreaderBar while the binders were on "the Arm & Leg Binders hold her legs". Hogtie
+    `CanApply` true on the street and WallRestraint true at the house wall - both then went on with `RtHub_Apply`.
+  - Owner: A locked the yoke; B's `Remove`, `Set`, `Apply` refused ("locked by the mission 'RtHubTestA'"); A's `Set width 120`
+    worked (115.2 -> 120 %). Timer 20 s: "taken off (timer)", `RtHub_Removed by=timer` in both missions.
+  - No struggling: the yoke locked by A, F held 8 s on the street: "The Yoke is locked - you can't struggle out.", list
+    "Yoke [locked] (+/- width)" (screenshots), still on. Negative control: `RtHub_Apply("Yoke", struggle=true)` and the same F
+    hold -> struggled free, `RtHub_Removed by=struggle` + `RtHub_Escaped` (F in the closet area opened the closet - that first
+    try did not count).
+  - Thread end: `hold Binders` (a new thread) -> on; `drop` (thread unreferenced) -> "taken off (thread ended)", `by=threadEnd`.
+    A lock taken from the polling listener stayed on for 400 frames (listeners do not end per call).
+  - Mission switched off (`SetMissionActive`): A's `onEnd=thread` spreader bar taken off (`by=missionEnd`); B's `keep` tether
+    stayed on, only let go.
+  - Escape: tapping V toggled blocking off / on and removed nothing; holding V: hint after 0.3 s (screenshot), at 3 s the bar and
+    the tether came off with `by=escapeKey` while A and B held them; blocking unchanged.
+  - Player put-on (key 4): `RtHub_Applied by=player`, owner null; A then took hold of it (`holds SpreaderBar`).
+  - Settings: SpreaderBar width 40 cm; NippleTether length 39.7 -> 50 -> 9999 clamped to 400 cm; WallRestraint height 75.6 ->
+    60 -> 500 clamped to 128.6 cm (the wall's top); the configs kept the player's values (NippleTether LengthCm 39.7,
+    WallRestraint KneeHeight 1.75). A mission's width ended with the bar (after the load it was the player's 21 cm again).
+  - Save / load: A's spreader bar lock (no struggling, 120 s) saved at home ("1 mission locks"), game restarted, loaded:
+    "load: mission locks SpreaderBar,RtHubTestA,0,110.341,mission", `RtHub_Applied by=load`, still locked with the timer
+    running; after the load B was refused and A (a new session of the same mission) removed it.
+  - Without Custom Missions (its DLL moved away for one start): "not connected", all mods load, key 4 + F work, the save's lock
+    was dropped as "mission ended" (the bar came off); the DLL put back, connected again.
+  - Warning: a test text was shown in game; with `General.WarnMissions` off a second one was not ("warning not shown").
+  - Example mission CaughtRestrained: switched on, "found" triggered through Custom Missions' own hook -> `CanApply` refused
+    Hogtie / WallRestraint there, picked the yoke: "caught: Yoke for 60 s", locked, list "Yoke [locked 0:44]", taken off by its
+    timer; switched off, "found" again -> nothing.
+  - Not observed: a Custom Missions version other than 2.4.0 (the warning path was tested with a test text).
+
 ## Known limits / next
+- Missions: events sent while a save loads come before the missions start; the game's own handcuffs can be read but not locked.
 - A tap of a number key right after a stage change can be missed (the second tap worked).
 - The list's unselected rows are dimmed only a little (the game's text shader).
 - Long rows (label + controls over ~30 characters) are shrunk by the game's text box, not wrapped.

@@ -94,8 +94,10 @@ namespace RestraintHub
             {
                 bool selected = id == c.List.Selected;
                 var r = HubController.Find(id);
-                string name = HubController.NameOf(id);
-                if (selected) name += r == null || string.IsNullOrEmpty(r.Controls) ? "  (F)" : "  (F, " + r.Controls + ")";
+                string name = HubController.NameOf(id) + Missions.Note(id);
+                // F only when she may struggle (a mission can lock it).
+                string keys = r != null && Missions.StruggleLocked(r) ? r.Controls : string.IsNullOrEmpty(r?.Controls) ? "F" : "F, " + r.Controls;
+                if (selected && !string.IsNullOrEmpty(keys)) name += "  (" + keys + ")";
                 lines.Add((selected ? ">" : "", name, selected));
             }
             string state = string.Join("|", lines);

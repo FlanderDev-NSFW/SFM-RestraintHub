@@ -13,15 +13,17 @@ namespace RestraintHub
     /// <see cref="Hub"/> (<see cref="Hub.Guid"/>, <see cref="Hub.Version"/>) and <see cref="Restraint"/>.</para>
     /// </summary>
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+    [BepInDependency(Missions.CmGuid, BepInDependency.DependencyFlags.SoftDependency)] // optional: missions use the restraints
     public sealed class Plugin : BasePlugin
     {
         public const string PluginGuid = "FlanderDev.SFM.RestraintHub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "1.0.0";
+        public const string PluginVersion = "1.1.0";
 
         internal static ManualLogSource Logger;
         public static ConfigEntry<string> SelectKey, ToggleConflictsKey;
-        public static ConfigEntry<bool> BlockEachOther;
+        public static ConfigEntry<bool> BlockEachOther, WarnMissions;
+        public static ConfigEntry<float> EscapeSeconds;
         public static ConfigEntry<int> DebugDisable;
 
         public override void Load()
@@ -31,16 +33,25 @@ namespace RestraintHub
                 "Key that selects the next worn restraint (F and + / - act on the selected one). An Input System key name (B, V, " +
                 "Backquote ...); the log warns if the game uses it too.");
             ToggleConflictsKey = Config.Bind("Keys", "ToggleBlocking", "V",
-                "Key that switches General.BlockEachOther on / off (an Input System key name; the log warns if the game uses it too).");
+                "Key that switches General.BlockEachOther on / off with a tap; held for Keys.EscapeHoldSeconds it takes off every " +
+                "restraint, also ones a mission locked (an Input System key name; the log warns if the game uses it too).");
+            EscapeSeconds = Config.Bind("Keys", "EscapeHoldSeconds", 3f, new ConfigDescription(
+                "How long to hold Keys.ToggleBlocking to take off all restraints (the way out of anything a mission locked).",
+                new AcceptableValueRange<float>(1f, 10f)));
             BlockEachOther = Config.Bind("General", "BlockEachOther", true,
                 "Restraints that hold the same body part block each other (the yoke and the wall restraint both hold her arms), and " +
                 "restraints refuse the animations they forbid (hand actions, pose skills, peeing). Off: they may be worn together - the " +
                 "one that poses a body part last wins it - and those animations are allowed (running, moving, crouching stay blocked). " +
                 "Toggled in game with Keys.ToggleBlocking.");
+            WarnMissions = Config.Bind("General", "WarnMissions", true,
+                "Show a warning in game when the installed Custom Missions v2 is a version the hub's mission functions were not made " +
+                "for, or the hub can't connect to it (the log always has it).");
             DebugDisable = Config.Bind("Debug", "Disable", 0, "Bit mask for tests: 1 = block no input.");
             Patches.Apply(new HarmonyLib.Harmony(PluginGuid));
             ClassInjector.RegisterTypeInIl2Cpp<HubController>();
             AddComponent<HubController>();
+            try { Missions.Init(); }
+            catch (System.Exception e) { Logger.LogWarning("connecting to Custom Missions v2 failed: " + e); }
             Logger.LogInfo("[SFM-ACCEPT] load: " + PluginName + " " + PluginVersion + " ready");
         }
     }

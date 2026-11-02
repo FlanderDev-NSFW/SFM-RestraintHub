@@ -1,0 +1,40 @@
+# Caught & Restrained - an example mission for RestraintHub's mission functions (RestraintHub's docs/Missions.md).
+# When someone finds her, a restraint that fits where she stands is locked on for a while - instead of a Game Over.
+
+caught_current = null
+caught_main = CreateThread("caught_main")
+
+caught_main:
+	if !FunctionExists("RtHub_Apply")
+		Warning("Caught & Restrained needs RestraintHub 1.1 or newer.")
+	else
+		CanGameOver(false)
+		caught_watch = CreateListener("caught_watch")
+		caught_escaped = CreateEventListener("caught_on_escaped", "RtHub_Escaped")
+
+# Every frame: found by someone (valid for one frame) and not already caught.
+caught_watch:
+	if _state.FoundNPC != -1
+		if caught_current == null || !RtHub_IsOn(caught_current)
+			caught_punish()
+
+# A random restraint that can go on here (RtHub_CanApply knows about walls, room on the floor and what she already wears).
+caught_punish:
+	choices = CreateList()
+	for id in RtHub_List()
+		if RtHub_CanApply(id)
+			choices.Insert(id)
+	if choices.Count() == 0
+		Log("[Caught & Restrained] nothing fits here: " + RtHub_LastError())
+	else
+		id = choices[RandomInt(choices.Count())]
+		# Locked by this mission: taken off when the time is up, or when the mission is switched off.
+		if RtHub_Apply(id, struggle=_settings.struggle, seconds=_settings.seconds, onEnd="mission")
+			caught_current = id
+			Log(Format("[Caught & Restrained] caught: {0} for {1} s", id, _settings.seconds))
+		else
+			Log(Format("[Caught & Restrained] {0} refused: {1}", id, RtHub_LastError()))
+
+caught_on_escaped:
+	if _eventdata.id == caught_current
+		Log(Format("[Caught & Restrained] she struggled out of the {0}", _eventdata.id))
