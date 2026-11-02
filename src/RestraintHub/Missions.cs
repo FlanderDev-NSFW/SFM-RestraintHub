@@ -63,14 +63,14 @@ namespace RestraintHub
             if (info.Instance == null)
             {
                 Status = "Custom Missions v2 " + version + " did not load";
-                Plugin.Logger.LogWarning(Status + ": missions cannot use restraints.");
+                Plugin.Logger.LogWarning(Status + "; no mission functions.");
                 return;
             }
             Cm = Cm2.Bind(info.Instance.GetType().Assembly, out string problem);
             if (Cm == null)
             {
                 Status = "not connected to Custom Missions v2 " + version + ": " + problem;
-                Warning = "RestraintHub can't connect to Custom Missions " + version + " - missions can't use restraints.";
+                Warning = "RestraintHub: Custom Missions " + version + " not supported.";
                 Plugin.Logger.LogWarning(Status);
                 return;
             }
@@ -78,19 +78,19 @@ namespace RestraintHub
             catch (Exception e)
             {
                 Cm = null;
-                Status = "registering the functions with Custom Missions v2 " + version + " failed: " + e.Message;
-                Warning = "RestraintHub can't connect to Custom Missions " + version + " - missions can't use restraints.";
+                Status = "registering functions with Custom Missions v2 " + version + " failed: " + e.Message;
+                Warning = "RestraintHub: Custom Missions " + version + " not supported.";
                 Plugin.Logger.LogWarning(Status + Environment.NewLine + e);
                 return;
             }
             var v = info.Metadata.Version;
             if (v.Major + "." + v.Minor != TestedVersion)
             {
-                Warning = "RestraintHub was made for Custom Missions " + TestedVersion + ", this is " + version + " - missions using restraints may not work.";
+                Warning = "RestraintHub: Custom Missions " + version + " untested (made for " + TestedVersion + ").";
                 Plugin.Logger.LogWarning(Warning);
             }
             Status = "connected (" + version + ")";
-            Plugin.Logger.LogInfo("[SFM-ACCEPT] missions: connected to Custom Missions v2 " + version + ", RtHub_* functions registered (API " + ApiVersion + ")");
+            Plugin.Logger.LogInfo("[SFM-ACCEPT] missions: Custom Missions v2 " + version + ", API " + ApiVersion);
         }
 
         // --- the functions --------------------------------------------------------------------------------------------------------
@@ -381,7 +381,7 @@ namespace RestraintHub
             {
                 _warned = Warning;
                 if (Plugin.WarnMissions.Value) Hub.Message(Warning);
-                Plugin.Logger.LogInfo("[SFM-ACCEPT] warning " + (Plugin.WarnMissions.Value ? "shown" : "not shown (General.WarnMissions off)") + ": " + Warning);
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] warning" + (Plugin.WarnMissions.Value ? "" : " (hidden)") + ": " + Warning);
             }
             Watch(now, afterLoad);
             var actions = Locks.Tick(Time.deltaTime, !menus && Time.timeScale > 0f,

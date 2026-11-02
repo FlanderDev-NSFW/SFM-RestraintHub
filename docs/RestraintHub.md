@@ -200,9 +200,9 @@ SFM_custom_mission_v2.Objects.PatchPlayerController OnFoundStrangerEvent "=/Leve
 | Debug.Disable | 0 | bit 1 = block no input (negative control) |
 
 ## Verification
-- L1: `./tools/dev.ps1 test RestraintHub` (45: page padding, conflicts and their wording, the worn list and its selection,
+- L1: `./tools/dev.ps1 test RestraintHub` (55: page padding, conflicts and their wording, the worn list and its selection,
   tap vs hold, the escape hold time, mission locks: owners, option updates, timers and pauses, thread / mission / keep ends,
-  never-worn and came-off locks, the save format);
+  never-worn and came-off locks, the save format, when number keys are restored / given up);
   `test SfmDev` (deploy / package dependencies, incl. the real projects).
 - L3 0.1.0 (2026-10-24, dev copy, first save; SpreaderBar 0.7.0, WallRestraint 1.2.0, Yoke 0.2.0):
   - load: "3 restraint entries from index 32 (page 5; 31 game entries, 1 empty)", shortcuts restored from the pre-hub save keys
@@ -276,7 +276,23 @@ SFM_custom_mission_v2.Objects.PatchPlayerController OnFoundStrangerEvent "=/Leve
   - Example mission CaughtRestrained: switched on, "found" triggered through Custom Missions' own hook -> `CanApply` refused
     Hogtie / WallRestraint there, picked the yoke: "caught: Yoke for 60 s", locked, list "Yoke [locked 0:44]", taken off by its
     timer; switched off, "found" again -> nothing.
+  - Log texts shortened afterwards (quoted here as logged then): now "missions: Custom Missions v2 2.4.0, API 1",
+    "warning (hidden): ...", "ring: 6 entries from index 32 (page 5)".
   - Not observed: a Custom Missions version other than 2.4.0 (the warning path was tested with a test text).
+- L3 1.1.0 number keys vs another mod (2026-11-02; user report: with a leash collar mod "it tries to clear the hotkeys and this
+  tries to restore them", over and over, and a key could not be given something else). The hub restored its keys from the masks
+  every time the ring array was replaced - before looking at what the player had done. Not reproduced with the CollarAsset 1.1.6
+  installed here (it touches neither the ring nor the keys), so a stand-in test plugin (RingChurn, scratch only) rebuilt the ring
+  without the restraint entries and pointed keys holding a restraint back at their saved game entry, every 60 frames or every
+  frame:
+  - before the fix: the hub rebuilt and restored on every one of them ("ring: ..." + three "restored" lines each time; 378
+    rebuilds logged at one per frame).
+  - fixed (`Logic/ShortcutGuard.cs`): a key is restored after a rebuild only while its saved index is still the hub's (else the
+    player gave it something else), at most 3 times in 10 s, then "Key 4 keeps being changed by another mod; Spreader Bar no longer restored." once per key, and one warning for a ring that keeps being replaced. One rebuild
+    per second: 16 rebuilds, 3-4 restores per key, the warnings, then quiet. One per frame: key 1 given a pose and key 4 the
+    dildo through the ring - both kept. Without the stand-in: load restores keys 1 / 4 / 8, a map change keeps them, key 4 still
+    puts the bar on, the game's own `RingMenuParentView.Initialize` (keeps the entries, resets the keys) -> restored once; a
+    restraint put on a key again by the player after the hub gave up stays there across a map change.
 
 ## Known limits / next
 - Missions: events sent while a save loads come before the missions start; the game's own handcuffs can be read but not locked.

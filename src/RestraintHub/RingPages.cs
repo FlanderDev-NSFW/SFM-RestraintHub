@@ -24,7 +24,11 @@ namespace RestraintHub
     /// - releasing ring key N over an entry stores it as that key's shortcut (<c>lastInvokeModel*</c>) and its index in
     ///   <c>GameStateData.RingShortcutModelIndex*</c>, which is saved. On load the game reads that index before any mod entry
     ///   exists: a mod index threw IndexOutOfRange and the stage never started. So the stored index is always kept on a game
-    ///   entry (the key's previous one), and the keys holding a mod entry are restored from each restraint's mask.
+    ///   entry (the key's previous one), and the keys holding a mod entry are restored from each restraint's mask - after a
+    ///   load, and after the ring was rebuilt only while the key's saved index is still the hub's (else the player gave the key
+    ///   something else) and not again and again (<see cref="ShortcutGuard"/>: another mod may keep resetting the keys).
+    /// - another mod may replace the array too: if it kept the restraint entries they are adopted, else added again; a mod
+    ///   that keeps replacing it is reported once, not on every rebuild.
     /// - a short tap of N runs the key's model through the game's handler, which ignores mod entries: detected with
     ///   <c>GetShortUp</c>.
     /// </summary>
@@ -37,7 +41,9 @@ namespace RestraintHub
 
         private readonly Action<Restraint> _onChosen;
         private IntPtr _ringArray;
-        private bool _applyShortcuts;
+        private bool _applyShortcuts, _afterLoad, _churnWarned;
+        private readonly ShortcutGuard _guard = new ShortcutGuard();
+        private readonly bool[] _yieldWarned = new bool[8];
         private int _vanilla = 31;
         private readonly int[] _fallbackIndex = new int[8];
         private static Il2CppSystem.Func<bool> _alwaysReleased, _neverReleased;
@@ -47,12 +53,24 @@ namespace RestraintHub
         /// <summary>The game's own entries in the current ring (a stored shortcut index must stay below it).</summary>
         public int VanillaCount => _vanilla;
 
-        public void OnShortcutsLoaded() => _applyShortcuts = true;
+        public void OnShortcutsLoaded()
+        {
+            _applyShortcuts = _afterLoad = true;
+            StartOver();
+        }
 
         /// <summary>A new game / the title replaced the game data without a load: forget the keys.</summary>
         public void Reset()
         {
             foreach (var r in Hub.All) r.Shortcuts = 0;
+            StartOver();
+        }
+
+        private void StartOver()
+        {
+            _guard.Reset();
+            _churnWarned = false;
+            Array.Clear(_yieldWarned, 0, _yieldWarned.Length);
         }
 
         private static bool IsMod(RingMenuItemModel m) => (int)m.RingItemType >= ModValueStart && (int)m.RingItemType <= ModValueEnd;
@@ -75,9 +93,23 @@ namespace RestraintHub
             if (models == null || models.Pointer == _ringArray) return;
             // The game's entries (anything a mod added before - e.g. an older mod version - is dropped and rebuilt here).
             var vanilla = new List<RingMenuItemModel>();
+            var found = new Dictionary<int, int>(); // ring value -> index of a restraint entry already in it
             for (int i = 0; i < models.Length; i++)
-                if (models[i] != null && !IsMod(models[i])) vanilla.Add(models[i]);
+            {
+                if (models[i] == null) continue;
+                if (!IsMod(models[i])) vanilla.Add(models[i]);
+                else found[(int)models[i].RingItemType] = i;
+            }
             _vanilla = vanilla.Count;
+            // The array was replaced but kept the restraint entries (another mod copied them; the game's Initialize appends to
+            // it): use it as it is. Whoever replaced it may have reset the keys too (Initialize does): check them.
+            if (Hub.All.TrueForAll(r => found.ContainsKey(r.RingValue)))
+            {
+                foreach (var r in Hub.All) r.RingIndex = found[r.RingValue];
+                _ringArray = models.Pointer;
+                _applyShortcuts = true;
+                return;
+            }
             int padding = Rules.Padding(_vanilla);
             if (_alwaysReleased == null)
             {
@@ -97,8 +129,15 @@ namespace RestraintHub
             view.commonRingMenuModel = grown;
             _ringArray = grown.Pointer;
             _applyShortcuts = true;
-            Plugin.Logger.LogInfo("[SFM-ACCEPT] ring: " + Hub.All.Count + " restraint entries from index " + (_vanilla + padding) + " (page "
-                                  + ((_vanilla + padding) / Rules.PageSize + 1) + "; " + _vanilla + " game entries, " + padding + " empty)");
+            int recent = _guard.Rebuilt(UnityEngine.Time.unscaledTime);
+            if (recent <= 3)
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] ring: " + Hub.All.Count + " entries from index " + (_vanilla + padding) + " (page "
+                                      + ((_vanilla + padding) / Rules.PageSize + 1) + ")");
+            else if (!_churnWarned)
+            {
+                _churnWarned = true;
+                Plugin.Logger.LogWarning("Another mod keeps rebuilding the ring menu; restraint entries re-added (no further logs).");
+            }
         }
 
         /// <summary>
@@ -149,11 +188,44 @@ namespace RestraintHub
             if (_applyShortcuts)
             {
                 _applyShortcuts = false;
+                bool afterLoad = _afterLoad;
+                _afterLoad = false;
+                float now = UnityEngine.Time.unscaledTime;
                 foreach (var r in Hub.All)
                 {
+                    int restored = 0;
+                    var entry = models[r.RingIndex];
                     for (int k = 0; k < 8; k++)
-                        if ((r.Shortcuts & (1 << k)) != 0) SetShortcutModel(parent, k, models[r.RingIndex]);
-                    if (r.Shortcuts != 0) Plugin.Logger.LogInfo("[SFM-ACCEPT] shortcut: " + r.Id + " restored on keys " + KeyList(r.Shortcuts));
+                    {
+                        if ((r.Shortcuts & (1 << k)) == 0) continue;
+                        var current = ShortcutModel(parent, k);
+                        int index = ShortcutIndex(data, k);
+                        if (afterLoad) _fallbackIndex[k] = index; // the save's index is the hub's game entry for this key
+                        bool holdsIt = current != null && (int)current.RingItemType == r.RingValue;
+                        switch (_guard.Decide(k, holdsIt, afterLoad, index, _fallbackIndex[k], now))
+                        {
+                            case ShortcutGuard.Decision.Keep:
+                                if (current.Pointer != entry.Pointer) SetShortcutModel(parent, k, entry); // the same entry in the new array
+                                break;
+                            case ShortcutGuard.Decision.Restore:
+                                SetShortcutModel(parent, k, entry);
+                                restored |= 1 << k;
+                                break;
+                            case ShortcutGuard.Decision.PlayerChanged:
+                                r.Shortcuts &= ~(1 << k);
+                                Plugin.Logger.LogInfo("[SFM-ACCEPT] shortcut: key " + (k + 1) + " reassigned, " + r.Id + " removed");
+                                break;
+                            case ShortcutGuard.Decision.Yield:
+                                r.Shortcuts &= ~(1 << k);
+                                if (!_yieldWarned[k])
+                                {
+                                    _yieldWarned[k] = true;
+                                    Plugin.Logger.LogWarning("Key " + (k + 1) + " keeps being changed by another mod; " + r.Name + " no longer restored.");
+                                }
+                                break;
+                        }
+                    }
+                    if (restored != 0) Plugin.Logger.LogInfo("[SFM-ACCEPT] shortcut: " + r.Id + " restored on keys " + KeyList(restored));
                 }
             }
             for (int k = 0; k < 8; k++)
