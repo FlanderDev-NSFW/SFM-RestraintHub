@@ -18,7 +18,7 @@ namespace RestraintHub
     {
         public const string PluginGuid = "FlanderDev.SFM.RestraintHub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "1.1.0";
+        public const string PluginVersion = "1.1.1";
 
         internal static ManualLogSource Logger;
         public static ConfigEntry<string> SelectKey, ToggleConflictsKey;
