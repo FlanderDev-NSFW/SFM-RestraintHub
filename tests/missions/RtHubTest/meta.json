@@ -1,5 +1,5 @@
 {
-	"title": { "En": "RtHubTest (RestraintHub test harness)" },
-	"description": { "En": "Runs commands from files in its cmd folder against RestraintHub's mission functions and logs the results. For testing only." },
+	"title": { "En": "RtHubTest" },
+	"description": { "En": "RestraintHub test harness." },
 	"defaultactive": true
 }
