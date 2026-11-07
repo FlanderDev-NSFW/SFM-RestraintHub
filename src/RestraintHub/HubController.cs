@@ -13,11 +13,11 @@ using Keyboard = UnityEngine.InputSystem.Keyboard;
 namespace RestraintHub
 {
     /// <summary>
-    /// Runs the hub every frame: ring pages, the list of worn restraints and its selection, the select key, F and + / - for
-    /// the selected restraint, the list on screen. Bridge diagnostics: <c>game get RestraintHub.HubController::Status</c>,
+    /// Runs the hub every frame: the panel (U), the list of worn items and its selection, the select key, F and + / - for
+    /// the selected wearable, the list on screen. Bridge diagnostics: <c>game get RestraintHub.HubController::Status</c>,
     /// <c>game call RestraintHub.HubController SelectNext</c> (session with --allow-invoke).
-    /// <para><b>Not API:</b> public only so the dev bridge can reach it (an injected MonoBehaviour). Restraint mods use
-    /// <see cref="Hub"/> and <see cref="Restraint"/>; this class may change in any version.</para>
+    /// <para><b>Not API:</b> public only so the dev bridge can reach it (an injected MonoBehaviour). Wearable mods use
+    /// <see cref="Hub"/> and <see cref="Wearable"/>; this class may change in any version.</para>
     /// </summary>
     public sealed class HubController : MonoBehaviour
     {
@@ -30,8 +30,14 @@ namespace RestraintHub
         /// <summary>"selected X; list A, B; ..." for diagnostics.</summary>
         public static string Status = "";
 
+        /// <summary>The panel: "open, tab Wearables, rows: ..." or "closed" (diagnostics).</summary>
+        public static string PanelStatus => Instance?.Panel?.Status ?? "no hub";
+
+        /// <summary>The placed objects on this map: "Apart: Hogtie (1.20, 0.00, -2.40) (3 in all)"; * = she is in it (diagnostics).</summary>
+        public static string PlacedStatus => Placements.Describe();
+
         internal readonly WornList List = new WornList();
-        internal RingPages Ring;
+        internal HubPanel Panel;
         internal bool InteractHeld;         // F this frame (Patches.ResolvePostfix)
         internal bool HandcuffsSelected;    // the game's handcuffs are selected: F is theirs
         internal bool InInteractAreaCached; // she stands in an interaction area (F is the area's), this frame
@@ -51,7 +57,7 @@ namespace RestraintHub
         private void Awake()
         {
             Instance = this;
-            Ring = new RingPages(OnChosen);
+            Panel = new HubPanel(this);
             _hud = new HudList();
         }
 
@@ -65,7 +71,6 @@ namespace RestraintHub
         private void Tick()
         {
             bool panel = _ui.PanelOpen();
-            Ring.Tick(panel);
             TrackSaveIdentity();
             bool inGame = PlayerController.Instance != null && GameState.GameStateData != null;
             if (!inGame)
@@ -75,6 +80,9 @@ namespace RestraintHub
                 return;
             }
             if (!_bindingsChecked) CheckBindings();
+            try { Placements.Tick(); }
+            catch (Exception e) { Fail("placed objects", e); }
+            Panel.Tick(panel || GameUi.RingOpen());
 
             // What is worn now, in registration order (the list keeps the order things were put on).
             var worn = new List<string>();
@@ -148,7 +156,7 @@ namespace RestraintHub
         }
 
         [HideFromIl2Cpp]
-        internal static Restraint Find(string id)
+        internal static Wearable Find(string id)
         {
             foreach (var r in Hub.All) if (r.Id == id) return r;
             return null;
@@ -165,10 +173,10 @@ namespace RestraintHub
             return worn;
         }
 
-        /// <summary>A restraint's ring entry or number key: select it if it is worn; else put it on unless something worn
-        /// holds the same part.</summary>
+        /// <summary>A wearable chosen in the panel: select it if it is worn; else put it on unless something worn holds the same
+        /// part (with blocking on). Returns true when it went on (the panel closes).</summary>
         [HideFromIl2Cpp]
-        private void OnChosen(Restraint r)
+        internal bool Choose(Wearable r)
         {
             try
             {
@@ -177,20 +185,61 @@ namespace RestraintHub
                     List.Select(r.Id);
                     Hub.Message(Missions.StruggleLocked(r) ? r.Name + " is locked - you can't struggle out." : r.Name + " is on - hold F to struggle free.");
                     Plugin.Logger.LogInfo("[SFM-ACCEPT] select: " + Describe());
-                    return;
+                    return false;
                 }
-                // Off (toggle key): restraints may overlap - whichever poses a body part last wins it.
+                // Blocking off (toggle key): wearables may overlap - whichever poses a body part last wins it.
                 var busy = Plugin.BlockEachOther.Value ? Rules.Conflict(r.Holds, WornParts()) : null;
                 if (busy != null)
                 {
                     string other = busy.Value.Label;
                     Hub.Message("Can't use the " + r.Name + ": the " + other + (other.EndsWith("s") ? " hold " : " holds ") + Rules.Describe(busy.Value.Shared) + ".");
                     Plugin.Logger.LogInfo("[SFM-ACCEPT] refused: " + r.Id + " conflicts with " + other + " (" + busy.Value.Shared + ")");
-                    return;
+                    return false;
                 }
-                r.OnChosen();
+                string why = r.PutOn();
+                if (why != null)
+                {
+                    Hub.Message("Can't use the " + r.Name + ": " + why);
+                    Plugin.Logger.LogInfo("[SFM-ACCEPT] refused: " + r.Id + ": " + why);
+                    return false;
+                }
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] put on: " + r.Id);
+                return true;
             }
-            catch (Exception e) { Fail("choosing " + r.Id, e); }
+            catch (Exception e) { Fail("choosing " + r.Id, e); return false; }
+        }
+
+        /// <summary>A placeable chosen in the panel: place one. Returns true when it was placed (the panel closes).</summary>
+        [HideFromIl2Cpp]
+        internal bool Place(Placeable p)
+        {
+            try
+            {
+                string why = Placements.Place(p);
+                if (why != null)
+                {
+                    Hub.Message("Can't place the " + p.Name + " here: " + why);
+                    Plugin.Logger.LogInfo("[SFM-ACCEPT] refused: place " + p.Id + ": " + why);
+                    return false;
+                }
+                return true; // Placements logged it
+            }
+            catch (Exception e) { Fail("placing " + p.Id, e); return false; }
+        }
+
+        /// <summary>The panel's "Pick up" for a placeable: the nearest one on this map. Returns true when one was picked up.</summary>
+        [HideFromIl2Cpp]
+        internal bool PickUp(Placeable p)
+        {
+            try
+            {
+                string why = Placements.PickUp(p);
+                if (why == null) return true;
+                Hub.Message("Can't pick up the " + p.Name + ": " + why);
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] refused: pick up " + p.Id + ": " + why);
+                return false;
+            }
+            catch (Exception e) { Fail("picking up " + p.Id, e); return false; }
         }
 
         /// <summary>Diagnostics: select the next worn restraint, as the select key does.</summary>
@@ -260,6 +309,7 @@ namespace RestraintHub
             _bindingsChecked = true;
             CheckBinding(Plugin.SelectKey, "select key");
             CheckBinding(Plugin.ToggleConflictsKey, "overlap toggle key");
+            CheckBinding(Plugin.OpenPanelKey, "panel key");
         }
 
         [HideFromIl2Cpp]
@@ -319,8 +369,7 @@ namespace RestraintHub
 
         // --- save identity -------------------------------------------------------------------------------------------------
 
-        /// <summary>A new game or the title screen replaces the game data without a load: forget the keys, tell the restraints
-        /// (<see cref="Restraint.OnNewGame"/>).</summary>
+        /// <summary>A new game replaces the game data without a load: tell the items (<see cref="HubItem.OnNewGame"/>).</summary>
         [HideFromIl2Cpp]
         private void TrackSaveIdentity()
         {
@@ -328,13 +377,13 @@ namespace RestraintHub
             IntPtr ptr = data == null ? IntPtr.Zero : data.Pointer;
             if (ptr == _gameData) return;
             _gameData = ptr;
-            Ring.Reset();
             Missions.OnNewGame();
-            foreach (var r in Hub.All)
+            Placements.OnNewGame();
+            foreach (var item in Items())
             {
-                if (r.OnNewGame == null) continue;
-                try { r.OnNewGame(); }
-                catch (Exception e) { Fail(r.Id + ".OnNewGame", e); }
+                if (item.OnNewGame == null) continue;
+                try { item.OnNewGame(); }
+                catch (Exception e) { Fail(item.Id + ".OnNewGame", e); }
             }
             Plugin.Logger.LogInfo("[SFM-ACCEPT] new game: game data replaced without a load");
         }
@@ -342,12 +391,20 @@ namespace RestraintHub
         internal void OnSaveLoaded()
         {
             _gameData = GameState.GameStateData == null ? IntPtr.Zero : GameState.GameStateData.Pointer;
-            Ring.OnShortcutsLoaded();
+        }
+
+        /// <summary>Every registered item: wearables (with placeables' in-use ones), then placeables.</summary>
+        [HideFromIl2Cpp]
+        internal static IEnumerable<HubItem> Items()
+        {
+            foreach (var w in Hub.All) yield return w;
+            foreach (var p in Hub.Places) yield return p;
         }
 
         private void OnDestroy()
         {
             _hud?.Destroy();
+            Panel?.Close();
             if (Instance == this) Instance = null;
         }
     }

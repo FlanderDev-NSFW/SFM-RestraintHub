@@ -7,87 +7,79 @@
 > **1.0.0 (2026-10-27): first release** (F3M). Plugin GUID `FlanderDev.SFM.RestraintHub` (was `com.local.restrainthub`), so the
 > config file is `BepInEx/config/FlanderDev.SFM.RestraintHub.cfg`. The release zips no longer include RestraintHub (it is its own download).
 
-The shared home of the restraint mods for SecretFlasherManaka (BepInEx 6 IL2CPP). **SpreaderBar**, **WallRestraint**,
-**Yoke** and **Binders** depend on it (a separate download they list as a dependency), and so can yours: the hub gives every restraint a ring entry, a place in an
-on-screen list, the keys F and + / -, input blocking and conflict checks, so a restraint mod only has to do its own lock and
-its visible part. Single-player/offline only.
+The shared home of the restraint mods for SecretFlasherManaka (BepInEx 6 IL2CPP). Restraint mods depend on it (a separate
+download they list as a dependency), and so can yours: the hub gives every wearable and placeable a place in its panel (`U`),
+the on-screen list, the keys F and + / -, input blocking, conflict checks and Custom Missions functions, so a restraint mod only
+has to do its own lock and its visible part. Single-player/offline only.
 
-**Status 0.3.0:** L3 (see Verification). Contents: [For players](#for-players) · [For modders](#for-modders) ·
+**Status 2.0.0:** the panel, the new API and placed objects at L3 (a test plugin, then the ported restraint mods; see
+Verification, Known limits). Contents: [For players](#for-players) · [For modders](#for-modders-20) ·
 [Config](#config-bepinexconfigflanderdevsfmrestrainthubcfg) · [Verification](#verification)
 
 ## For players
 
-- **Ring pages:** all restraint entries are on pages of their own after the game's (empty "-" slots fill the game's last page),
-  in a fixed order. With the game's 31 entries: page 5 holds Spreader Bar, Wall Restraint, Yoke; more restraints add pages.
-  Every ring key (1-8) reaches them. Number shortcuts work as usual (release a ring key over an entry; a short tap runs it)
-  and are kept in the save.
-- **What she wears:** a small list directly above the head preview (bottom right), growing upwards, in the game's own style:
-  one row per worn restraint (the game's handcuffs included), the selected one marked `>` with its keys, and a first row naming
-  the select key when more than one is worn. A newly worn restraint becomes the selected one.
-- **`B`** selects the next worn restraint. **Only the selected one reacts:** holding **F** struggles with it (with the game's
-  handcuffs selected, F goes to them), **+ / -** adjust it. Menus, the ring and interaction areas (closet, PC ...) keep their keys.
-- **Conflicts:** two restraints that hold the same body part (neck, arms, legs, her place) cannot be worn together - the second is
+- **The panel (`Keys.OpenPanel`, U)** lists the installed items in two tabs: **Wearables** (on her body) and **Placeables**
+  (objects put into the world). `Q` / `E` or the last row switch tabs, the mouse wheel scrolls, `U` or `Esc` closes. Clicking a
+  wearable puts it on (or selects it, when it is already on); clicking a placeable places one where the mod says (in front of
+  her, on the wall she faces ...); with one on this map it shows `[1 here]` and a "Pick up" row (the nearest one).
+  The panel closes after something went on, was placed or picked up; a refusal is shown in the message bar and the panel stays.
+- **Placed objects** stay on their map and in the save. At one, the game's own prompt shows "F <name>": F puts her into it
+  (the placeable's in-use wearable - worn list, struggle, escape as usual). While she is in it, its prompt is off, so F is the
+  struggle.
+  It is the game's own dildo choice panel, rebuilt (see "How the panel works"); the game keeps running while it is open.
+- **What she wears:** a small list directly above the head preview (bottom right), in the game's own style: one row per worn
+  item (the game's handcuffs included), the selected one marked `>` with its keys, and a first row naming the select key when more
+  than one is worn. A newly worn item becomes the selected one.
+- **`B`** selects the next worn item. **Only the selected one reacts:** holding **F** struggles with it (with the game's handcuffs
+  selected, F goes to them), **+ / -** adjust it. Menus and interaction areas (closet, PC ...) keep their keys.
+- **Conflicts:** two items that hold the same body part (neck, arms, legs, her place) cannot be worn together - the second is
   refused ("Can't use the Wall Restraint: the Yoke holds her neck and arms."). **`V`** switches this off and on (kept in the
-  config); off, restraints may overlap and the one that poses a body part last wins it, and they no longer refuse her animations
-  (hand actions, pose skills, peeing - running, walking and crouching stay blocked); the list's first row then reads
-  "Next restraint (overlap on)". Choosing a worn restraint in the ring selects it.
-- **Blocking:** while restraints are on, what they take away (running, walking, crouching, peeing, actions that need her hands,
-  pose skills) is refused - hand actions and poses with "Can't do that with the <restraint> on.". Shift + move still ends a pose.
-  With blocking off (`V`) hand actions, pose skills and peeing are allowed.
-  The game's "Unlocking..." gauge shows the selected restraint's struggle.
-- **Escape (1.1.0):** holding **`V`** for `Keys.EscapeHoldSeconds` (3 s) takes off every restraint that has `TakeOff`, also ones
-  a mission locked ("Keep holding V to take off all restraints." after 0.3 s). A tap still toggles blocking (on release).
-- **Missions (1.1.0):** with Custom Missions v2 installed (soft dependency, bound by reflection - `Cm2.cs`), mission scripts get
-  `RtHub_*` functions and events (`Missions.cs`; the author's reference is [Missions.md](Missions.md)). A mission's lock
-  (`Logic/MissionLocks.cs`) can forbid struggling ("The Yoke is locked - you can't struggle out.", the list shows
-  `[locked 1:23]` and no F), run a timer and end with the mission's thread / the mission; it is saved (`RestraintHub.MissionLocks`,
-  one line per lock) and owned by the mission's name after a load. A Custom Missions version other than 2.4.x, or members that
-  are missing, show a warning once in game (`General.WarnMissions`) and always in the log.
+  config); off, items may overlap and the one that poses a body part last wins it, and they no longer refuse her animations
+  (hand actions, pose skills, peeing - running, walking and crouching stay blocked).
+- **Blocking:** while items are worn, what they take away is refused - hand actions and poses with "Can't do that with the
+  <item> on.". Shift + move still ends a pose. The game's "Unlocking..." gauge shows the selected item's struggle.
+- **Escape:** holding **`V`** for `Keys.EscapeHoldSeconds` (3 s) takes off every worn item, also ones a mission locked.
+- **Missions:** with Custom Missions v2 installed, mission scripts get `RtHub_*` functions and events ([Missions.md](Missions.md)).
 
-## For modders
+## For modders (2.0)
 
 ### What the hub does, what your mod does
 
 | The hub (you get it by registering) | Your mod |
 |---|---|
-| a ring entry on the restraint pages, its label (localisation), click and number-key detection | what happens when it is chosen (`OnChosen`) |
-| number shortcuts, saved under your key; never lets the game save an index it cannot load | - |
-| the list over the head preview, selection (`B`), which restraint F and + / - go to | read `StruggleHeld`, call `TakeStep()` |
-| refusing restraints that hold the same body part (unless the player turned that off) | say which parts it holds (`Holds`) |
-| clearing the input your restraint forbids, the refusal message | say what it forbids (`Blocks`), or adjust input in `OnInput` |
-| the "Unlocking..." gauge for the selected restraint | report the attempt's progress (`Attempt`) |
-| a short tap of F as a second key, separate from the struggle (0.3.0) | act on it (`OnTap`) |
-| + / - held, for smooth adjustments (0.3.0) | read `HeldStep` |
-| the save hooks: right after the game writes / reads a slot, a `SaveSlot` to write / read your keys (0.3.0) | `OnSave`, `OnLoad` |
-| noticing a new game / the title replacing the game data without a load (0.3.0) | take it off (`OnNewGame`) |
-| whether a menu or the ring is open, whether she stands in an interaction area (0.3.0) | read `Hub.MenuOpen`, `Hub.InInteractArea`, `Hub.InputFree` |
+| a row in the panel, putting on / placing / picking up from there, the refusal message | `PutOn` (wearables), `FindSpot` (placeables) - return why not |
+| placed objects: kept per map, saved with the game, shown when their map loads, an interaction area "F <name>" each, picking up | its model under the hub's root (`Show` / `Hide`), what F does (`InUse`, or `Use`) |
+| the list over the head preview, selection (`B`), which wearable F and + / - go to | read `StruggleHeld`, call `TakeStep()` / read `HeldStep` |
+| refusing wearables that hold the same body part (unless the player turned that off) | say which parts it holds (`Holds`) |
+| clearing the input a worn item forbids, the refusal message | say what it forbids (`Blocks`), or adjust input in `OnInput` |
+| the "Unlocking..." gauge for the selected wearable | report the attempt's progress (`Attempt`) |
+| a short tap of F as a second key, separate from the struggle | act on it (`OnTap`) |
+| the escape key and mission removal | take it off at once (`TakeOff`) |
+| the save hooks: right after the game writes / reads a slot, a `SaveSlot` for your keys | `OnSave`, `OnLoad` |
+| noticing a new game replacing the game data without a load | take it off / away (`OnNewGame`) |
+| whether a menu (the panel too) or the ring is open, whether she stands in an interaction area | read `Hub.MenuOpen`, `Hub.InInteractArea`, `Hub.InputFree` |
+| Custom Missions v2 functions and events for wearables | `CanPutOn`, `Settings` (optional) |
 | - | the lock / struggle logic (SfmKit's `LockMachine` recommended), the model, the pose, what it saves |
 
 ### Quick start
-Copy **`mods/RestraintTemplate`** - a complete restraint with no model, compiled with the repo and checked in game. Its notes (`docs/mods/RestraintTemplate.md`)
-lists the renames (namespace, GUID, `Id`, `RingValue`, save keys) and how to build, deploy, test and package. The three real
-restraints are larger examples: `mods/Yoke` (body-worn, arms posed, + / - width), `mods/SpreaderBar` (legs, own input handling
-in `OnInput`), `mods/WallRestraint` (placed on a wall, the whole body posed, + / - height).
-
-The registration is the whole API (full XML docs in `Hub.cs`, shipped as `RestraintHub.xml` next to the DLL):
 
 ```csharp
-[BepInPlugin("com.you.blindfold", "Blindfold", "1.0.0")]
-[BepInDependency(Hub.Guid, "^1.1.0")] // loads after the hub; refused without it, with an older one or with 2.x
+[BepInPlugin("You.SFM.Blindfold", "Blindfold", "1.0.0")]
+[BepInDependency(Hub.Guid, "^2.0.0")] // a range: a bare "2.0.0" would mean exactly 2.0.0
 public sealed class Plugin : BasePlugin
 {
-    internal static Restraint Entry;
+    internal static Wearable Entry;
 
     public override void Load()
     {
         ClassInjector.RegisterTypeInIl2Cpp<BlindfoldController>();
         AddComponent<BlindfoldController>();
-        Entry = new Restraint
+        Entry = new Wearable
         {
-            Id = "Blindfold", RingValue = 9400, Label = () => "Blindfold", ShortcutSaveKey = "Blindfold.Shortcuts",
-            Holds = BodyParts.None, Blocks = () => Blocks.Running,
+            Id = "Blindfold", Label = () => "Blindfold", Holds = BodyParts.None, Blocks = () => Blocks.Running,
             IsWorn = () => BlindfoldController.Machine.Worn,
-            OnChosen = () => BlindfoldController.Machine.RequestLock(),
+            PutOn = () => BlindfoldController.Machine.RequestLock() ? null : "it is already on",
+            TakeOff = () => BlindfoldController.Machine.Reset(),
             Attempt = () => BlindfoldController.Machine.Attempt,
             Controls = "+/- tightness",
             OnSave = slot => slot.Save("Blindfold.Locked", BlindfoldController.Machine.Worn),
@@ -101,97 +93,105 @@ public sealed class Plugin : BasePlugin
 // In the controller's Update:
 //   int step = Plugin.Entry.TakeStep();                       // +1 / -1 / 0, only while selected
 //   machine.Tick(Time.deltaTime, Plugin.Entry.StruggleHeld && machine.State == LockState.Locked, Random.value);
-//   if (Hub.InputFree) { ... your own keys ... }              // no menu, ring or interaction area
+//   if (Hub.InputFree) { ... your own keys ... }              // no menu, panel or interaction area
 ```
 
+A placeable registers the same way. The hub keeps its placed objects (map, pose, your data string), saves them, and shows them
+whenever their map is loaded: a root object at the pose, your model built under it by `Show`, and one of the game's interaction
+areas. F there puts on `InUse` - the wearable that holds her while she is in it (registered with it, shown in the worn list,
+not in the Wearables tab) - with `UsedAt` set to that object:
+
+```csharp
+Placeable stocks = null;
+stocks = new Placeable
+{
+    Id = "StocksFrame", Label = () => "Stocks",
+    FindSpot = () => PlaceSpot.InFront(1f),       // or your own check: PlaceSpot.No("no room here")
+    Show = placed => StocksModel.Build(placed.Root),   // local coordinates: the root has the placed pose
+    Hide = placed => { },                          // optional: drop references before the root is destroyed
+    AreaCenter = new Vector3(0f, 0f, 0.4f), AreaRadius = 0.5f, MaxPerMap = 1,
+    InUse = new Wearable
+    {
+        Id = "Stocks", IsWorn = ..., TakeOff = ..., Holds = ..., Blocks = ...,
+        // stocks.UsedAt: the placed one whose F was pressed; null when a mission puts it on (then: where she stands)
+        PutOn = () => stocks.UsedAt != null ? machine.LockAt(stocks.UsedAt.Position, stocks.UsedAt.Rotation) : machine.LockHere(),
+    },
+};
+Hub.Register(stocks);
+```
+
+`PlaceSpot.Data` / `Placed.Data` carry what you need to rebuild it (WallRestraint keeps the knee heights the wall allows there);
+`Placeable.Here` lists the placed ones on the current map. The hub frees `UsedAt` when `InUse` comes off.
+
 ### Project setup
-- **In this repo:** `<ProjectReference Include="..\RestraintHub\RestraintHub.csproj" Private="false" />` (compile against the
-  hub, do not copy its DLL). `./tools/dev.ps1 deploy|cycle|package <YourMod>` bring the hub along (its own plugins folder, with
-  `RestraintHub.xml`). SfmKit's types are `internal`, so your copy and the hub's do not clash.
-- **Outside this repo:** `<Reference Include="RestraintHub"><HintPath>...\BepInEx\plugins\RestraintHub\RestraintHub.dll</HintPath>
-  <Private>false</Private></Reference>`; ship your DLL in `BepInEx/plugins/<YourMod>/` and the hub's folder with it (or require it).
-- **Versions:** `Hub.Version`; require a newer hub with a range: `[BepInDependency(Hub.Guid, "^1.1.0")]`. **A bare version is an
-  exact match** in BepInEx 6: the 1.0 mods (`"1.0.0"`) were refused by hub 1.1.0 ("Could not load [RestraintTemplate 1.0.0]
-  because it has missing dependencies: FlanderDev.SFM.RestraintHub (1.0.0)") [observed 2026-11-02]. The API is `Hub`, `Restraint`,
-  `RestraintSetting`, `SaveSlot`, `BodyParts`, `Blocks`; `Plugin`, `HubController` and `Missions` are public only for the dev
-  bridge and may change.
+- **In this repo:** a mod repository checked out in `mods/<Mod>` sets `<SfmUsesRestraintHub>true</SfmUsesRestraintHub>`
+  (`build/SfmMod.targets` compiles against `../RestraintHub`, `lib/RestraintHub` or the installed hub). `deploy|cycle|package`
+  bring the hub along. SfmKit's types are `internal`, so your copy and the hub's do not clash.
+- **Outside this repo:** reference `BepInEx\plugins\RestraintHub\RestraintHub.dll` with `Private=false` and require the hub.
+- **API:** `Hub`, `HubItem`, `Wearable`, `Placeable`, `RestraintSetting`, `SaveSlot`, `BodyParts`, `Blocks`. `Plugin`,
+  `HubController` and `Missions` are public only for the dev bridge and may change. Full XML docs in `Hub.cs`
+  (`RestraintHub.xml` next to the DLL).
 
-### The `Restraint` fields
-
-| Field | Required | Called / read | Notes |
-|---|---|---|---|
-| `Id` | yes | at registration | stable and unique; ring order (ordinal); localisation key `restrainthub_<Id>` |
-| `RingValue` | yes | at registration | 9000-9998, unique - see the registry below |
-| `Label` | recommended | whenever shown (every frame while the list is visible) | cheap; null shows `Id` |
-| `ShortcutSaveKey` | recommended | on save / load | never rename after a release (players lose their number keys) |
-| `OnShortcutsMissing` | no | on load, when the save lacks the key | return a bit mask (bit k = key k+1) |
-| `Holds` | no (`None`) | when anything is chosen | the game's handcuffs hold `Arms` |
-| `IsWorn` | yes | every frame | true from the start of closing until fully off (`LockMachine.Worn`); an exception counts as not worn |
-| `Blocks` | no | every input frame while worn | union over all worn restraints; may change |
-| `OnChosen` | yes | the entry chosen while off and nothing conflicts | put it on, or `Hub.Message` why not; chosen while worn = selected instead |
-| `Attempt` | no | every frame while selected | 0..1 for the "Unlocking..." gauge |
-| `OnInput` | no | every input frame while worn, after blocking | edit the game's `InputData` for anything `Blocks` does not cover |
-| `Controls` | no | with the list | a few words for + / -; label + controls under ~30 characters (longer rows are shrunk) |
-| `OnTap` | no (0.3.0) | F tapped (released within 0.3 s) while selected, outside menus and interaction areas | a second use of F; with it set, `StruggleHeld` starts only after the tap time |
-| `OnSave` | no (0.3.0) | right after the game wrote a slot (not the system file) | `slot.Save(key, bool / int / double / string)` under your mod's keys |
-| `OnLoad` | no (0.3.0) | right after the game read a slot, before the stage starts | `slot.Load(key, fallback)`; the fallback is what older saves get |
-| `OnNewGame` | no (0.3.0) | the game data was replaced without a load (new game) | take it off; the title screen keeps the old data, so this comes with New Game |
-| `PutOn` | no (1.1.0) | a mission puts it on (`RtHub_Apply`), while off and nothing conflicts | put it on without a player message; return null when it is closing, else why not in a few words. Null: `OnChosen` is called and a refusal reported when not worn right after |
-| `CanPutOn` | no (1.1.0) | `RtHub_CanApply` | would `PutOn` work here, without side effects (null = yes)? For place-dependent restraints (WallRestraint and Hogtie run their placement with a `check` flag) |
-| `TakeOff` | recommended (1.1.0) | `RtHub_Remove`, a mission's timer / end, the escape key | take it off at once; leave the body as without it. Null: missions can't remove it and the escape key leaves it on |
-| `Settings` | no (1.1.0) | `RtHub_Get` / `RtHub_Set` while worn | `RestraintSetting { Name, Unit, Get, Set }`; `Set` returns null or why not, clamps, and must not write the player's config |
-| `Selected` (hub) | - | set every frame | this restraint is the selected worn item |
-| `StruggleHeld` (hub) | - | set every frame | F held for it: selected, no menu / ring open, not in an interaction area |
-| `TakeStep()` (hub) | - | call once per frame | +1 / -1 / 0; only the selected restraint gets steps; held keys repeat |
-| `HeldStep` (hub, 0.3.0) | - | set every frame | +1 / -1 while + / - is held for the selected restraint, else 0 (smooth changes: `value += HeldStep * speed * dt`) |
-| `Hub.MenuOpen`, `Hub.InInteractArea`, `Hub.InputFree` (0.3.0) | - | set every frame | a game panel or the ring is open / she is in an interaction area (F is the area's) / neither |
+### Changes from 1.x (a clean break)
+- `Restraint` is now `Wearable`; `RingValue`, `ShortcutSaveKey`, `OnShortcutsMissing` and `OnChosen` are gone - the ring menu and
+  number keys are not used any more (they conflicted with other ring mods). `PutOn` and `TakeOff` are required; `PutOn`
+  returns null or why not, and the hub shows the reason.
+- New: `Placeable` (`FindSpot`, `Show`, `Hide`, `UseText`, `InUse`, `Use`, `MaxPerMap`, `AreaCenter` / `AreaRadius`;
+  hub-set `UsedAt`, `Here`), `PlaceSpot`, `Placed`, `Hub.Register(Placeable)`, `Hub.Wearables` / `Hub.Placeables` (was
+  `Hub.Registered`). Hogtie and WallRestraint are placeables now; their wearables keep the ids `Hogtie` / `WallRestraint`.
+- Save data under the old shortcut keys is simply ignored.
 
 ### Rules of thumb
 - **Timing:** everything is on Unity's main thread. The hub's `Update` and yours run in no fixed order, so `StruggleHeld` and
-  steps can be a frame late - harmless. Register once from `Load`; registering later misses the ring until the game rebuilds it.
+  steps can be a frame late - harmless. Register once from `Load`.
 - **Callbacks must not throw** (they run in the hub's frame and input hook). The hub catches and logs, but don't rely on it.
-- **Overlap is possible.** The player can switch blocking off (`V`): your restraint may be worn with one that poses the same
+- **Overlap is possible.** The player can switch blocking off (`V`): your wearable may be worn with one that poses the same
   bones. Pose in `LateUpdate`, place your model from the drawn bones in `Camera.onPreCull`, and expect the other pose to win
-  sometimes - never assume you own a bone. Blocking off also lifts `Blocks.HandActions`, `PoseSkills` and `Pee` (`Rules.Animations`),
-  so a pose skill or a hand animation may start while yours is worn - if yours poses those bones, it should keep posing them.
+  sometimes. Blocking off also lifts `Blocks.HandActions`, `PoseSkills` and `Pee` (`Rules.Animations`).
 - **Pose skills:** `Blocks.PoseSkills` stops new ones; end a running one yourself when yours goes on if you pose the same bones
   (`pca.PlayerAction.ChangeAction(ActionType.None)`, as Yoke does).
-- **Your own save data** goes in your own keys through `OnSave` / `OnLoad` (see the template's `Patches.cs`); since 0.3.0 no
-  restraint mod hooks `SaveManager` itself. Write the player's config only on the player's action
-  (SpreaderBar once wrote a clamped value back on every launch and the setting crept).
-- **Keys:** the hub owns `B`, `V`, F and + / - for restraints. For your own keys, check the game's bindings first:
-  `game call RestraintHub.HubController KeysInUse 'H P U'` (free today: B H P U V Y Backquote).
+- **Your own save data** goes in your own keys through `OnSave` / `OnLoad`. Write the player's config only on the player's action.
+- **Keys:** the hub owns `U`, `B`, `V`, F and + / - for restraints. For your own keys, check the game's bindings first:
+  `game call RestraintHub.HubController KeysInUse 'H P Y'`.
 
-### Ring value registry
+### How the panel works (`HubPanel.cs`)
+- `InGameUiManager.Instance.Open(AssetReferencer.Instance.ChooseDildoPanel, false)` opens the game's dildo choice panel under
+  `InGameCanvas/MiddleCloneLayer`; the game then shows the cursor, holds the player's input, closes it on Escape and keeps
+  running (`Time.timeScale` 1) [observed 2026-11-07].
+- Rebuilt on open: the title's and buttons' `CommonTextView` removed (it would put the localised text back in `Start`), the
+  button list (`ButtonGroupManager` + `VerticalLayoutGroup`) moved into a `ScrollRect` with a `RectMask2D` between the title and
+  Close, the prefab's first button kept as the row template (40 high instead of 55, font 20 instead of 25), every row with a new
+  `Button.onClick`. The box keeps the prefab's size: its open animation sets it (a bigger size was overwritten).
+- Rows are refreshed every 0.25 s (state notes like `[on]`, `[locked 1:23]`, `[1 here]`).
+- It opens in interaction areas too (she may stand at a placed object to pick it up), not over another menu or the ring.
 
-| Value | Mod |
-|---|---|
-| 9100 | SpreaderBar |
-| 9200 | WallRestraint |
-| 9300 | Yoke |
-| 9400 | Binders |
-| 9500 | NippleTether |
-| 9600 | Hogtie |
-| 9900 | RestraintTemplate (example - replace it in your copy) |
-| 9999 | the hub's empty filler (reserved) |
-
-Pick an unused value in 9000-9998 and add it here (or to your mod's README if you publish elsewhere).
+### How placed objects work (`Placements.cs`, `Logic/PlacementStore.cs`)
+- The store holds every placed object of every map: placeable id, map (`StageType` name), position, rotation, data. Saved in the
+  slot under `RestraintHub.Placed` (one line each, tab separated, the data URL-escaped); objects of a mod that is not installed
+  stay in the save and are not shown.
+- The current map is `InGameManager.Instance.CurrentStageController`; when it changes (or a load / new game marks the shown ones
+  stale, or a root was destroyed with its scene) all shown objects are hidden and the map's ones shown again. Roots are moved
+  into the stage's scene, so they go away with it.
+- The interaction area is a copy of the game's dropped-coat area (`AssetReferencer.DroppedPrefabs[0]`, child `InteractArea`),
+  `type` set to `DroppedClothes` and `Initialize`d with our callback and text: with that type F calls the callback and nothing
+  else. A plain `AddComponent<InteractAreaController>` throws in `Initialize` (it needs the ring effect). Details:
+  `docs/knowledge/api-notes/ui-and-input.md` "Interact areas" [observed 2026-11-07].
+- F: the hub's conflict check and `InUse.PutOn` (the same path as the panel's put-on, with `UsedAt` set); on success the area
+  is switched off (deactivated: the game unregisters it, so `Hub.InInteractArea` is false and F is the struggle). When `InUse`
+  is no longer worn, `UsedAt` is cleared and the area switched on again.
 
 ### Testing with the bridge
-`game get RestraintHub.HubController::Status` ("selected X; list A; B;"), `game call RestraintHub.HubController SelectNext`,
-`key B --via input --expect "select:"`. To choose an entry without touching the player's shortcuts: hold the ring key, select
-the slot (`openRingList[page].currentAngle`), `game click --at 960 540`, then release (releasing over an entry assigns it).
-Log markers: `register:`, `ring:`, `list:`, `select:`, `refused:`, `conflicts:`, `shortcut:`, `save:` / `load:`, `tap:`,
-`new game:`, `escape:`, `missions:` (connected), `mission '<name>':` (calls, refusals, locks ending), `event:`, `warning`.
-Missions: `game get RestraintHub.Missions::Status` (locks and the loaded missions), `game call RestraintHub.Missions
-SetMissionActive <name> false` (as the phone does; `--allow-invoke`), and the test mission `tests/missions/RtHubTest` (copy it to
-`CustomMissions2/RtHubTestA`; create `cmd/<n> <command>.txt` files - see its header - and read `[RtHubTest:A]` lines in the
-log). "Found by someone" can be triggered with `MSYS_NO_PATHCONV=1 ./tools/dev.ps1 game call
-SFM_custom_mission_v2.Objects.PatchPlayerController OnFoundStrangerEvent "=/Level/.../NpcLocation/Npc(Clone)"`.
+`game get RestraintHub.HubController::PanelStatus` ("open, tab Wearables, rows: ..."), `::Status` (the worn list),
+`::PlacedStatus` ("Residence: HogtieDevice (-25.73, -0.11, -117.02) (2 in all)", `*` = she is in it),
+`key U`, `key E`, `game click "<row label>"`, the scroll position:
+`game set '/InGameManager/InGameCanvas/MiddleCloneLayer/RestraintHubPanel/Contents/RestraintHubScroll::[UnityEngine.UI.ScrollRect].verticalNormalizedPosition' 0`.
+Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`, `free:`, `stage <Map>:`, `refused:`, `list:`, `select:`, `conflicts:`, `tap:`,
+`save:` / `load:`, `new game:`, `escape:`, `missions:`, `mission '<name>':`, `event:`, `warning`.
 
 ## Config (`BepInEx/config/FlanderDev.SFM.RestraintHub.cfg`)
 | Key | Default | Meaning |
 |---|---|---|
+| Keys.OpenPanel | U | Input System key name that opens and closes the panel |
 | Keys.SelectNext | B | Input System key name that selects the next worn restraint |
 | Keys.ToggleBlocking | V | tapped: switches General.BlockEachOther (K is the game's Costume key; J, L, M, I, O are taken too); held: the escape |
 | Keys.EscapeHoldSeconds | 3 | how long to hold Keys.ToggleBlocking to take off all restraints (1-10) |
@@ -200,9 +200,10 @@ SFM_custom_mission_v2.Objects.PatchPlayerController OnFoundStrangerEvent "=/Leve
 | Debug.Disable | 0 | bit 1 = block no input (negative control) |
 
 ## Verification
-- L1: `./tools/dev.ps1 test RestraintHub` (55: page padding, conflicts and their wording, the worn list and its selection,
-  tap vs hold, the escape hold time, mission locks: owners, option updates, timers and pauses, thread / mission / keep ends,
-  never-worn and came-off locks, the save format, when number keys are restored / given up);
+- L1: `./tools/dev.ps1 test RestraintHub` (50: blocking, conflicts and their wording, the worn list and its selection, tap vs
+  hold, the escape hold time, mission locks: owners, option updates, timers and pauses, thread / mission / keep ends, never-worn
+  and came-off locks, the save format; placed objects: per-map counts, save text round trip with tabs / newlines / exact
+  floats, broken lines skipped);
   `test SfmDev` (deploy / package dependencies, incl. the real projects).
 - L3 0.1.0 (2026-10-24, dev copy, first save; SpreaderBar 0.7.0, WallRestraint 1.2.0, Yoke 0.2.0):
   - load: "3 restraint entries from index 32 (page 5; 31 game entries, 1 empty)", shortcuts restored from the pre-hub save keys
@@ -294,8 +295,37 @@ SFM_custom_mission_v2.Objects.PatchPlayerController OnFoundStrangerEvent "=/Leve
     puts the bar on, the game's own `RingMenuParentView.Initialize` (keeps the entries, resets the keys) -> restored once; a
     restraint put on a key again by the player after the hub gave up stays there across a map change.
 
+- L3 2.0.0 panel (2026-11-07, test plugin with 10 wearables and 2 placeables - one refusing, one with an in-use wearable;
+  the 1.x mods refused by BepInEx next to 2.0 as expected): `U` -> "panel: open (Wearables)", all ten rows, "Placeables >"
+  (`PanelStatus`, screenshots); the list clipped inside the box, scrolled to the end by its `ScrollRect` (last rows and
+  "Placeables >" shown); "Test Cuffs" clicked -> "put on: Test1", panel closed, worn list "> Test Cuffs (F, test)"; reopened ->
+  "Test Cuffs [on]"; `E` -> Placeables; "Test post" -> "refused: place TestPost: no room here", panel stays; "Test frame" ->
+  "placed", reopened "[1 placed]" + "Pick up: Test frame" -> "picked up"; Escape closed it; holding V took the cuffs off through
+  `TakeOff`; no exceptions from the hub. "keys: panel key U is not bound by the game". Not tested: the mouse wheel (no bridge
+  command; `ScrollRect` handles it), gamepad navigation, real restraint mods (step 4: porting them).
+- L3 2.0.0 placed objects (2026-11-07). Proof first (scratch plugin): a `new GameObject` + `InteractAreaController` threw in
+  `Initialize`; a copy of the dropped coat's area showed "F Test clone"; with `type` None F did nothing, with `DroppedClothes` F
+  called the callback (twice, `isInteracting` false, the real dropped coat untouched). Then the hub with the test plugin (a cube
+  as the model): "placed: TestFrame on Apart", "refused: place TestPost: no room here (test refusal)"; at it "F Get into the
+  test frame" (screenshot); F -> "put on: TestFrameInUse", "used: TestFrame -> TestFrameInUse", the plugin saw `UsedAt`, the
+  area inactive and the game's interact list back to its placeholder, `Hub.InInteractArea` false; V held -> "free: TestFrame",
+  area active. Travel to Residence -> hidden ("hide"), back -> "stage Apart: 1 placed objects shown"; closet save "1 placed
+  objects", restart + load -> "load: 1 placed objects", shown again; the panel opened in the closet's area, "Pick up: Test
+  frame" -> "picked up", saved again with 0. No exceptions.
+- L3 2.0.0 with the ported mods (2026-11-07; Hogtie 2.0.0, WallRestraint 2.0.0): Hogtie refused in the apartment ("something
+  is in the way (bed01)", then flowers on the street), placed on the street (device on the floor with the game's circle,
+  screenshot); F -> "used: HogtieDevice -> Hogtie", hogtied in the device (the empty copy hidden, worn list "Hogtie (F)",
+  screenshot); F held 5.5 s -> "attempt: success", "free: HogtieDevice", the device and its area back. WallRestraint placed on a
+  street fence ("place: ok on 'Fence_Concrete_4m_01_LOD0'", screenshot of the empty restraint on the fence); F -> locked to the
+  wall there; V held -> "free: WallRestraintFitting". Both saved at home ("2 placed objects"), restart + load + travel ->
+  "stage Residence: 2 placed objects shown"; the wall used again after the load (knees within the saved heights); both picked
+  up from the panel, saved clean. Configs: only descriptions changed. Not tested in 2.0: missions putting Hogtie /
+  WallRestraint on (`RtHub_Apply`, where she stands - the 1.x path, unchanged), two of a kind on one map (`MaxPerMap` is 1 for
+  both).
+
 ## Known limits / next
+- Placed objects: missions can't place or pick them up (they put the in-use wearable on where she stands); "Pick up" takes the
+  nearest one on the map, wherever she is; a placed model is sized for her body when it is shown.
 - Missions: events sent while a save loads come before the missions start; the game's own handcuffs can be read but not locked.
-- A tap of a number key right after a stage change can be missed (the second tap worked).
 - The list's unselected rows are dimmed only a little (the game's text shader).
 - Long rows (label + controls over ~30 characters) are shrunk by the game's text box, not wrapped.

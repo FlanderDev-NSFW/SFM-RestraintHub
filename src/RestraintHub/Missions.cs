@@ -177,7 +177,7 @@ namespace RestraintHub
         private static bool InGame() => PlayerController.Instance != null && GameState.GameStateData != null;
 
         /// <summary>The restraint named by the first argument (<c>id</c>); null if found, else the error.</summary>
-        private static string Find(object args, out Restraint r)
+        private static string Find(object args, out Wearable r)
         {
             string id = Cm.Text(Cm.Arg(args, "id", 0));
             r = HubController.Find(id);
@@ -185,7 +185,7 @@ namespace RestraintHub
             return id == null ? "no restraint id given" : id == HandcuffsName ? "the game's handcuffs can't be used this way" : "no restraint '" + id + "' installed";
         }
 
-        private static string Setting(Restraint r, object args, out RestraintSetting setting)
+        private static string Setting(Wearable r, object args, out RestraintSetting setting)
         {
             setting = null;
             string name = Cm.Text(Cm.Arg(args, "name", 1));
@@ -197,7 +197,7 @@ namespace RestraintHub
         }
 
         /// <summary>Why <paramref name="r"/> can't go on now; null if it can. <paramref name="probe"/>: also ask the mod (CanPutOn).</summary>
-        private static string WhyNot(Restraint r, string program, bool probe)
+        private static string WhyNot(Wearable r, string program, bool probe)
         {
             if (!InGame()) return "not in a stage";
             if (r.Worn) return r.Name + " is already on";
@@ -245,12 +245,7 @@ namespace RestraintHub
             _applyBy[r.Id] = "mission";
             try
             {
-                if (r.PutOn != null) error = r.PutOn();
-                else
-                {
-                    r.OnChosen();
-                    if (!r.Worn) error = r.Name + " could not be put on here";
-                }
+                error = r.PutOn();
             }
             catch (Exception e)
             {
@@ -277,7 +272,6 @@ namespace RestraintHub
             string program = Program(thread);
             error = Locks.Refuses(r.Id, program);
             if (error != null) return r.Name + " is " + error;
-            if (r.TakeOff == null) return r.Name + " can't be taken off by missions";
             TakeOff(r, "mission");
             Locks.Drop(r.Id);
             Plugin.Logger.LogInfo("[SFM-ACCEPT] mission '" + program + "': took off " + r.Id);
@@ -310,7 +304,7 @@ namespace RestraintHub
         // --- taking off -------------------------------------------------------------------------------------------------------------
 
         /// <summary>Take <paramref name="r"/> off now; <paramref name="by"/> goes into the RtHub_Removed event.</summary>
-        internal static void TakeOff(Restraint r, string by)
+        internal static void TakeOff(Wearable r, string by)
         {
             if (r.TakeOff == null) return;
             _removeBy[r.Id] = by;
@@ -339,14 +333,14 @@ namespace RestraintHub
         // --- struggling and the list ---------------------------------------------------------------------------------------------
 
         /// <summary>A mission forbids struggling out of <paramref name="r"/>.</summary>
-        internal static bool StruggleLocked(Restraint r)
+        internal static bool StruggleLocked(Wearable r)
         {
             var l = Locks.Get(r.Id);
             return l != null && !l.Struggle;
         }
 
         /// <summary>The player tried to struggle with a locked restraint: say why not (at most every 3 s).</summary>
-        internal static void SayLocked(Restraint r)
+        internal static void SayLocked(Wearable r)
         {
             if (Time.unscaledTime - _lockedSaidAt < 3f) return;
             _lockedSaidAt = Time.unscaledTime;

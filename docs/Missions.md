@@ -17,7 +17,8 @@ restraint that fits where she stands is locked on for a while instead of a Game 
 
 `RtHub_List()` gives the installed ones. Current ids: `SpreaderBar`, `Yoke`, `WallRestraint`, `Binders`, `NippleTether`,
 `Hogtie`. `RtHub_Worn()` and `RtHub_IsOn()` also know the game's own handcuffs as `Handcuffs` (they can't be put on or locked
-this way).
+this way). Hogtie and WallRestraint are placeables for the player (placed from the panel, used with F); `RtHub_Apply` puts
+them on where she stands, as in 1.x.
 
 ## Functions
 
@@ -85,7 +86,7 @@ Listen with `CreateEventListener(label, name)`; the label runs at once, with `_e
 | `RtHub_Removed` | a restraint came off | `id`, `by`, `owner` (the mission that held it, else null) |
 | `RtHub_Escaped` | she struggled out of one (also sends `RtHub_Removed`) | `id`, `by`, `owner` |
 
-`by` is one of: `player` (ring menu / number key), `mission` (`RtHub_Apply` / `RtHub_Remove`), `load` (loading a save),
+`by` is one of: `player` (the panel), `mission` (`RtHub_Apply` / `RtHub_Remove`), `load` (loading a save),
 `struggle`, `timer`, `threadEnd`, `missionEnd`, `escapeKey`, `other`.
 
 ```

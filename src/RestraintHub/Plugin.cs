@@ -7,10 +7,10 @@ using Il2CppInterop.Runtime.Injection;
 namespace RestraintHub
 {
     /// <summary>
-    /// The shared home of the restraint mods (SpreaderBar, WallRestraint, Yoke): see <see cref="Hub"/>. Loads before them
+    /// The shared home of the restraint mods: see <see cref="Hub"/>. Loads before them
     /// (they declare a hard dependency on <see cref="PluginGuid"/>).
     /// <para><b>Not API:</b> the config entries are public for the dev bridge (live tuning). Restraint mods use
-    /// <see cref="Hub"/> (<see cref="Hub.Guid"/>, <see cref="Hub.Version"/>) and <see cref="Restraint"/>.</para>
+    /// <see cref="Hub"/> (<see cref="Hub.Guid"/>, <see cref="Hub.Version"/>) <see cref="Wearable"/> and <see cref="Placeable"/>.</para>
     /// </summary>
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     [BepInDependency(Missions.CmGuid, BepInDependency.DependencyFlags.SoftDependency)] // optional: missions use the restraints
@@ -18,10 +18,10 @@ namespace RestraintHub
     {
         public const string PluginGuid = "FlanderDev.SFM.RestraintHub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "1.1.1";
+        public const string PluginVersion = "2.0.0";
 
         internal static ManualLogSource Logger;
-        public static ConfigEntry<string> SelectKey, ToggleConflictsKey;
+        public static ConfigEntry<string> SelectKey, ToggleConflictsKey, OpenPanelKey;
         public static ConfigEntry<bool> BlockEachOther, WarnMissions;
         public static ConfigEntry<float> EscapeSeconds;
         public static ConfigEntry<int> DebugDisable;
@@ -29,6 +29,9 @@ namespace RestraintHub
         public override void Load()
         {
             Logger = Log;
+            OpenPanelKey = Config.Bind("Keys", "OpenPanel", "U",
+                "Key that opens and closes the restraint panel (wearables and placeables). An Input System key name; the log warns if the " +
+                "game uses it too.");
             SelectKey = Config.Bind("Keys", "SelectNext", "B",
                 "Key that selects the next worn restraint (F and + / - act on the selected one). An Input System key name (B, V, " +
                 "Backquote ...); the log warns if the game uses it too.");

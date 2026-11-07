@@ -21,7 +21,6 @@ namespace RestraintHub
             void Hook(System.Reflection.MethodBase target, string postfix) => harmony.Patch(target, postfix: new HarmonyMethod(me, postfix));
             Hook(AccessTools.Method(typeof(InputResolver), nameof(InputResolver.Resolve)), nameof(ResolvePostfix));
             // No hook on RingMenuParentView.OnInvokeCommandCommon: with it patched, saving crashed the game [observed 2026-10-11].
-            Hook(AccessTools.Method(typeof(Localizer), nameof(Localizer.Trans), new[] { typeof(string) }), nameof(TransPostfix));
             Hook(AccessTools.Method(typeof(TempUnlockPanelView), nameof(TempUnlockPanelView.OnLateUpdate)), nameof(UnlockPanelPostfix));
             Hook(AccessTools.Method(typeof(SaveManager), nameof(SaveManager.Load)), nameof(LoadPostfix));
             Hook(AccessTools.Method(typeof(SaveManager), nameof(SaveManager.Save)), nameof(SavePostfix));
@@ -39,7 +38,7 @@ namespace RestraintHub
                 if (c == null || __result == null) return;
                 c.InteractHeld = __result.Interact;
                 Blocks blocks = Blocks.None;
-                Restraint first = null;
+                Wearable first = null;
                 foreach (var r in Hub.All)
                 {
                     if (!r.Worn) continue;
@@ -58,7 +57,7 @@ namespace RestraintHub
             catch (Exception e) { HubController.Fail("input hook", e); }
         }
 
-        private static void Apply(InputData i, Blocks b, Restraint handsBy)
+        private static void Apply(InputData i, Blocks b, Wearable handsBy)
         {
             var player = PlayerController.Instance;
             var action = player == null || player.Pca == null || player.Pca.PlayerState == null ? null : player.Pca.PlayerState.CurrentAction;
@@ -98,16 +97,6 @@ namespace RestraintHub
             Plugin.Logger.LogInfo("[SFM-ACCEPT] refused: an action blocked by " + handsBy.Id);
         }
 
-        // --- ring labels ---------------------------------------------------------------------------------------------------
-
-        private static void TransPostfix(string key, ref string __result)
-        {
-            if (key == null || !key.StartsWith("restrainthub_", StringComparison.Ordinal)) return;
-            if (key == RingPages.PaddingKey) { __result = ""; return; }
-            foreach (var r in Hub.All)
-                if (key == RingPages.LabelKey(r)) { __result = r.Name; return; }
-        }
-
         // --- the game's "Unlocking..." gauge shows the selected restraint's attempt ------------------------------------------
 
         private static void UnlockPanelPostfix(TempUnlockPanelView __instance)
@@ -125,7 +114,7 @@ namespace RestraintHub
             catch (Exception e) { HubController.Fail("unlock gauge hook", e); }
         }
 
-        // --- save / load: each restraint's number shortcuts (its own pre-hub key), then its own data (OnSave / OnLoad) ---------
+        // --- save / load: the missions' locks, the placed objects, then each item's own data (OnSave / OnLoad) -----------------
         // Written right after SaveManager.Save into the slot it just wrote [observed 2026-10-11, SpreaderBar].
 
         private static void SavePostfix()
@@ -133,21 +122,15 @@ namespace RestraintHub
             try
             {
                 if (HubController.Instance == null || SaveRapper.IsSystemData || SaveRapper.currentDataPath == SaveRapper.SystemDataPath) return;
-                var s = "";
-                foreach (var r in Hub.All)
-                {
-                    if (string.IsNullOrEmpty(r.ShortcutSaveKey)) continue;
-                    SaveRapper.Save(r.ShortcutSaveKey, r.Shortcuts);
-                    s += " " + r.Id + "=" + r.Shortcuts;
-                }
                 SaveRapper.Save(Missions.SaveKey, Missions.Locks.Serialize());
-                Plugin.Logger.LogInfo("[SFM-ACCEPT] save: shortcuts" + s + (Missions.Locks.Count == 0 ? "" : ", " + Missions.Locks.Count + " mission locks") + " path=" + SaveRapper.currentDataPath);
+                SaveRapper.Save(Placements.SaveKey, Placements.Serialize());
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] save: " + Missions.Locks.Count + " mission locks, " + Placements.Store.All.Count + " placed objects, path=" + SaveRapper.currentDataPath);
                 var slot = new SaveSlot(SaveRapper.currentDataPath);
-                foreach (var r in Hub.All)
+                foreach (var item in HubController.Items())
                 {
-                    if (r.OnSave == null) continue;
-                    try { r.OnSave(slot); }
-                    catch (Exception e) { HubController.Fail(r.Id + ".OnSave", e); }
+                    if (item.OnSave == null) continue;
+                    try { item.OnSave(slot); }
+                    catch (Exception e) { HubController.Fail(item.Id + ".OnSave", e); }
                 }
             }
             catch (Exception e) { HubController.Fail("save hook", e); }
@@ -159,23 +142,16 @@ namespace RestraintHub
             {
                 var c = HubController.Instance;
                 if (c == null || SaveRapper.IsSystemData || SaveRapper.currentDataPath == SaveRapper.SystemDataPath) return;
-                var s = "";
-                foreach (var r in Hub.All)
-                {
-                    int mask = string.IsNullOrEmpty(r.ShortcutSaveKey) ? -1 : SaveRapper.Load(r.ShortcutSaveKey, -1);
-                    if (mask < 0) mask = r.OnShortcutsMissing?.Invoke() ?? 0;
-                    r.Shortcuts = mask & 0xFF;
-                    s += " " + r.Id + "=" + r.Shortcuts;
-                }
                 c.OnSaveLoaded();
                 Missions.OnLoad(SaveRapper.Load(Missions.SaveKey, ""));
-                Plugin.Logger.LogInfo("[SFM-ACCEPT] load: shortcuts" + s + " path=" + SaveRapper.currentDataPath);
+                Placements.OnLoad(SaveRapper.Load(Placements.SaveKey, ""));
+                Plugin.Logger.LogInfo("[SFM-ACCEPT] load: path=" + SaveRapper.currentDataPath);
                 var slot = new SaveSlot(SaveRapper.currentDataPath);
-                foreach (var r in Hub.All)
+                foreach (var item in HubController.Items())
                 {
-                    if (r.OnLoad == null) continue;
-                    try { r.OnLoad(slot); }
-                    catch (Exception e) { HubController.Fail(r.Id + ".OnLoad", e); }
+                    if (item.OnLoad == null) continue;
+                    try { item.OnLoad(slot); }
+                    catch (Exception e) { HubController.Fail(item.Id + ".OnLoad", e); }
                 }
             }
             catch (Exception e) { HubController.Fail("load hook", e); }

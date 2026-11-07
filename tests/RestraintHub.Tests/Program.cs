@@ -16,26 +16,22 @@ namespace RestraintHub.Tests
 
         private static int Main()
         {
-            PaddingTests();
+            BlockTests();
             ConflictTests();
             ListTests();
             TapTests();
             LockTests();
-            ShortcutTests();
+            PlacementTests();
             Console.WriteLine(_passed + " passed, " + _failed + " failed");
             return _failed == 0 ? 0 : 1;
         }
 
-        private static void PaddingTests()
+        private static void BlockTests()
         {
-            // The game has 31 common ring entries [observed 2026-10-11]: one empty slot, the mods start the 5th page at index 32.
             var yoke = Blocks.Running | Blocks.HandActions | Blocks.PoseSkills | Blocks.Pee;
             Check(Rules.Effective(yoke, true) == yoke, "blocking on: everything the restraint forbids");
             Check(Rules.Effective(yoke, false) == Blocks.Running, "blocking off: animations allowed, running still blocked");
             Check(Rules.Effective(Blocks.Moving | Blocks.Crouching, false) == (Blocks.Moving | Blocks.Crouching), "blocking off: moving, crouching stay");
-            Check(Rules.Padding(31) == 1, "padding: 31 game entries -> 1 empty slot");
-            Check(Rules.Padding(32) == 0, "padding: full pages -> none");
-            Check(Rules.Padding(25) == 7 && (25 + Rules.Padding(25)) % Rules.PageSize == 0, "padding: always ends a page");
         }
 
         private static void ConflictTests()
@@ -165,24 +161,26 @@ namespace RestraintHub.Tests
             Check(MissionLock.TryParseEnd(" Mission ", out var e1) && e1 == LockEnd.Mission && !MissionLock.TryParseEnd("later", out _), "onEnd names");
         }
 
-        private static void ShortcutTests()
+
+        private static void PlacementTests()
         {
-            var g = new ShortcutGuard();
-            var D = ShortcutGuard.Decision.Restore;
-            Check(g.Decide(3, true, false, 0, 0, 0f) == ShortcutGuard.Decision.Keep, "shortcut: key still holds the restraint -> keep");
-            Check(g.Decide(3, false, true, 7, 0, 0f) == D, "shortcut: after a load -> restore (the save's index is the hub's)");
-            Check(g.Decide(3, false, false, 0, 0, 1f) == D, "shortcut: ring rebuilt, saved index unchanged -> restore");
-            Check(g.Decide(3, false, false, 12, 0, 1f) == ShortcutGuard.Decision.PlayerChanged, "shortcut: saved index changed -> the player's key now");
-            Check(g.Decide(3, false, false, 0, 0, 2f) == D, "shortcut: third restore within the window -> restore");
-            Check(g.Decide(3, false, false, 0, 0, 3f) == ShortcutGuard.Decision.Yield, "shortcut: taken away a fourth time within 10 s -> yield");
-            Check(g.Decide(4, false, false, 0, 0, 3f) == D, "shortcut: other keys are counted on their own");
-            Check(g.Decide(3, false, false, 0, 0, 20f) == D, "shortcut: after the window -> restore again");
-            g.Reset();
-            for (int i = 0; i < 3; i++) g.Decide(5, false, false, 0, 0, 0f);
-            Check(g.Decide(5, false, true, 0, 0, 0f) == D, "shortcut: a load always restores");
-            int n = 0;
-            for (int i = 0; i < 5; i++) n = g.Rebuilt(i * 0.1f);
-            Check(n == 5 && g.Rebuilt(30f) == 1, "ring rebuilds counted within the window");
+            var s = new PlacementStore();
+            var a = s.Add("Hogtie", "Apart", new[] { 1.25f, 0f, -2.5f }, new[] { 0f, 0.7071068f, 0f, 0.7071068f }, "");
+            s.Add("WallRestraint", "Park", new[] { -10.5f, 0.02f, 3f }, new[] { 0f, 0f, 0f, 1f }, "height=42.5\tline\nbreak %");
+            s.Add("Hogtie", "Park", new[] { 0f, 0f, 0f }, new[] { 0f, 0f, 0f, 1f }, null);
+            Check(s.Count("Hogtie", "Apart") == 1 && s.Count("Hogtie", "Park") == 1 && s.On("Park").Count == 2, "placements: counted per map");
+            string text = s.Serialize();
+            var r = new PlacementStore();
+            Check(r.Restore(text) == 3, "placements: all three read back");
+            var w = r.On("Park")[0];
+            Check(w.Kind == "WallRestraint" && w.Data == "height=42.5\tline\nbreak %" && w.Position[0] == -10.5f && w.Position[1] == 0.02f,
+                  "placements: data with tab, newline and % survives; floats exact");
+            Check(r.All[0].Rotation[1] == 0.7071068f && r.All[0].Rotation[3] == 0.7071068f, "placements: rotation exact");
+            Check(r.All[2].Data == "", "placements: null data -> empty");
+            Check(s.Remove(a) && s.Count("Hogtie", "Apart") == 0 && s.All.Count == 2, "placements: removed");
+            Check(r.Restore("") == 0 && r.All.Count == 0, "placements: empty save -> none");
+            Check(r.Restore("Hogtie\tApart\t1 2\t0 0 0 1\t\nbad\nHogtie\tApart\t1 2 NaN\t0 0 0 1\t\nHogtie\tApart\t1 2 3\t0 0 0 1\t%zz\nHogtie\t\t1 2 3\t0 0 0 1\t\nYoke\tPark\t1 2 3\t0 0 0 1\tok") == 2
+                  && r.All[0].Data == "%zz" && r.All[1].Kind == "Yoke", "placements: broken lines skipped (short vector, NaN, no map); a bad escape kept as text");
         }
     }
 }

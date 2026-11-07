@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace RestraintHub
 {
     /// <summary>
-    /// What a restraint holds (<see cref="Restraint.Holds"/>). While <c>General.BlockEachOther</c> is on, two restraints that
+    /// What a restraint holds (<see cref="Wearable.Holds"/>). While <c>General.BlockEachOther</c> is on, two restraints that
     /// share a part cannot be worn together: the one chosen second is refused with "Can't use the X: the Y holds her ...".
     /// </summary>
     [Flags]
@@ -23,7 +23,7 @@ namespace RestraintHub
     }
 
     /// <summary>
-    /// What a worn restraint takes away from the player (<see cref="Restraint.Blocks"/>). The hub clears these fields of the
+    /// What a worn restraint takes away from the player (<see cref="Wearable.Blocks"/>). The hub clears these fields of the
     /// game's resolved input every frame (postfix on <c>InputResolver.Resolve</c>), for the union of all worn restraints.
     /// Refused hand actions and pose skills show "Can't do that with the X on." (at most once a second).
     /// </summary>
@@ -59,11 +59,6 @@ namespace RestraintHub.Logic
 {
     public static class Rules
     {
-        public const int PageSize = 8;
-
-        /// <summary>Empty slots after the game's entries so the mods' entries start on a page of their own.</summary>
-        public static int Padding(int vanillaCount) => (PageSize - vanillaCount % PageSize) % PageSize;
-
         /// <summary>The first worn restraint that holds a part <paramref name="want"/> needs, and the parts they share; null if none.</summary>
         public static (string Label, BodyParts Shared)? Conflict(BodyParts want, IEnumerable<(string Label, BodyParts Holds)> worn)
         {
