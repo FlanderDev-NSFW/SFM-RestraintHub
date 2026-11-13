@@ -1,4 +1,4 @@
-# RestraintHub 2.0.0
+# RestraintHub 2.1.0
 
 The shared base for restraint mods in **Secret Flasher Manaka**. On its own it adds nothing you can see; the restraint mods
 (Spreader Bar, Wall Restraint, Hogtie, Yoke, Arm & Leg Binders, Nipple Tether) need it.
@@ -32,6 +32,8 @@ Then install the restraint mods you want the same way.
 
 In menus and interaction areas (closet, PC ...) the keys keep their normal job: step out of the area first.
 
+- **Arousal** (2.1): restraints made for it can raise her ecstasy (the pink bar on the left) while she wears them, like the
+  game's toys - at the top she climaxes as usual. `Arousal.Scale` in the settings makes it stronger, weaker or switches it off.
 - **Blocking:** while a restraint is on, what it takes away (running, using her hands, pose skills ...) is refused with a
   message. With `V` switched off, restraints may overlap and fewer actions are refused.
 - **Missions** (optional, with [Custom Missions v2](https://f95zone.to/threads/263276/) 2.4): missions can put restraints on her
@@ -43,7 +45,8 @@ In menus and interaction areas (closet, PC ...) the keys keep their normal job: 
 
 ## Settings
 `BepInEx/config/FlanderDev.SFM.RestraintHub.cfg` (created on the first start): the keys for `U`, `B` and `V`, how long `V` must be
-held to take everything off, whether restraints block each other, and whether to warn about the Custom Missions version.
+held to take everything off, whether restraints block each other, how much restraints arouse her (`Arousal.Scale`, 0 = not at
+all), and whether to warn about the Custom Missions version.
 
 ## For modders
 The API is documented in `RestraintHub.xml` next to the DLL; the guide is [docs/RestraintHub.md](docs/RestraintHub.md), and
