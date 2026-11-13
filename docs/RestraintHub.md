@@ -323,6 +323,13 @@ Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`,
   WallRestraint on (`RtHub_Apply`, where she stands - the 1.x path, unchanged), two of a kind on one map (`MaxPerMap` is 1 for
   both).
 
+- L3 2.1.0 arousal (2026-11-13; mechanics in `docs/knowledge/api-notes/player-stats.md`): a test wearable with `Stimulation`
+  0.03/s -> the gauge rose exactly 0.015 per 0.5 s with no drain; `Arouse(0.2)` -> +0.2; `Arousal.Scale` 0 -> it drained and
+  `Arouse` was refused (negative control); at 1 the game's climax ran, nothing was added during it, it reset, "event: RtHub_Climax
+  Test2 by restraint". Test mission (API 2): `RtHub_Arousal` 0 -> `RtHub_Arouse(0.25)` -> 0.2498; `RtHub_Stimulate(0.04, 5)`
+  ended by its timer; `RtHub_Arouse(-1)` refused; `RtHub_Stimulate(0.05)` -> climax "by mission (owner 'RtHubTestA')"; ended with
+  the mission switched off; masturbating to a climax -> "by game". Not tested: the handcuff cool-down block.
+
 ## Known limits / next
 - Placed objects: missions can't place or pick them up (they put the in-use wearable on where she stands); "Pick up" takes the
   nearest one on the map, wherever she is; a placed model is sized for her body when it is shown.

@@ -36,6 +36,12 @@ namespace RestraintHub
         /// <summary>The placed objects on this map: "Apart: Hogtie (1.20, 0.00, -2.40) (3 in all)"; * = she is in it (diagnostics).</summary>
         public static string PlacedStatus => Placements.Describe();
 
+        /// <summary>The ecstasy gauge and what the hub adds: "0.420, worn 0.02/s, missions 0/s, scale 1" (diagnostics).</summary>
+        public static string ArousalStatus => Arousal.Status;
+
+        /// <summary>Diagnostics (bridge, --allow-invoke): Hub.Arouse(amount).</summary>
+        public static string Arouse(float amount) => Arousal.Arouse(amount) ?? "ok";
+
         internal readonly WornList List = new WornList();
         internal HubPanel Panel;
         internal bool InteractHeld;         // F this frame (Patches.ResolvePostfix)
@@ -135,6 +141,8 @@ namespace RestraintHub
             }
             try { Missions.Tick(menus); }
             catch (Exception e) { Fail("missions", e); }
+            try { Arousal.Tick(); }
+            catch (Exception e) { Fail("arousal", e); }
             Status = Describe();
             _hud.Show(this);
         }
@@ -379,6 +387,7 @@ namespace RestraintHub
             _gameData = ptr;
             Missions.OnNewGame();
             Placements.OnNewGame();
+            Arousal.OnNewGame();
             foreach (var item in Items())
             {
                 if (item.OnNewGame == null) continue;

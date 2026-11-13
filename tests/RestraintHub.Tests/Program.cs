@@ -22,6 +22,7 @@ namespace RestraintHub.Tests
             TapTests();
             LockTests();
             PlacementTests();
+            ArousalTests();
             Console.WriteLine(_passed + " passed, " + _failed + " failed");
             return _failed == 0 ? 0 : 1;
         }
@@ -161,6 +162,29 @@ namespace RestraintHub.Tests
             Check(MissionLock.TryParseEnd(" Mission ", out var e1) && e1 == LockEnd.Mission && !MissionLock.TryParseEnd("later", out _), "onEnd names");
         }
 
+
+        private static void ArousalTests()
+        {
+            bool Near(float a, float b) => Math.Abs(a - b) < 1e-5f;
+            Check(Near(ArousalSources.Next(0.5f, 0.02f, 0.5f, 0f, 1f), 0.51f), "arousal: rate x dt added");
+            Check(Near(ArousalSources.Next(0.5f, 0.02f, 0.5f, 0.1f, 2f), 0.72f), "arousal: pulses added, all scaled");
+            Check(ArousalSources.Next(0.99f, 1f, 1f, 0.5f, 1f) == 1f && ArousalSources.Next(0.3f, -1f, 1f, -1f, 1f) == 0.3f, "arousal: capped at 1, negatives ignored");
+            Check(ArousalSources.Next(0.3f, 0.5f, 1f, 0.5f, 0f) == 0.3f && ArousalSources.Next(float.NaN, 0f, 0f, 0f, 1f) == 0f, "arousal: scale 0 adds nothing; NaN -> 0");
+            var s = new ArousalSources();
+            s.Pulse(0.1f); s.Pulse(0.05f); s.Pulse(-1f); s.Pulse(float.NaN);
+            Check(Near(s.TakePulses(), 0.15f) && s.TakePulses() == 0f, "arousal: pulses add up once, bad ones ignored");
+            s.SetMission("A", 0.02f, 0f);
+            s.SetMission("B", 0.01f, 2f);
+            Check(Near(s.MissionsRate(), 0.03f) && Near(s.MissionRate("B"), 0.01f), "arousal: mission rates add up");
+            var gone = s.Tick(1.5f, p => true);
+            Check(gone.Count == 0 && Near(s.MissionsRate(), 0.03f), "arousal: timed one still running after 1.5 of 2 s");
+            gone = s.Tick(0.6f, p => true);
+            Check(gone.Count == 1 && gone[0].Program == "B" && gone[0].Why == "timer" && Near(s.MissionsRate(), 0.02f), "arousal: timed one ends");
+            gone = s.Tick(10f, p => p != "A");
+            Check(gone.Count == 1 && gone[0].Why == "missionEnd" && s.MissionsRate() == 0f, "arousal: ends with its mission");
+            s.SetMission("A", 0.02f, 0f); s.SetMission("A", 0f, 0f);
+            Check(s.MissionsRate() == 0f, "arousal: rate 0 stops it");
+        }
 
         private static void PlacementTests()
         {

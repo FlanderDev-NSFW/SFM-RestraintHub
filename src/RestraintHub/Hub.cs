@@ -111,6 +111,13 @@ namespace RestraintHub
         /// <see cref="StruggleHeld"/> turns true only once F is held longer than a tap.</summary>
         public Action OnTap;
 
+        /// <summary>Optional (2.1). How much it arouses her while worn: a rise of the game's ecstasy gauge (the pink bar, 0..1)
+        /// per second - like a running toy, so the gauge does not drain meanwhile. Called every frame while worn; 0 = nothing.
+        /// For scale: masturbating is 0.05/s, the piston machine about 0.002 - 0.03/s, the idle drain 0.05/s. The rises of all worn
+        /// items add up; the player's <c>Arousal.Scale</c> multiplies them. At 1 the game's own climax runs and resets the gauge.
+        /// For a single push (a stroke, a jolt) use <see cref="Hub.Arouse"/>.</summary>
+        public Func<float> Stimulation;
+
         // --- set by the hub ------------------------------------------------------------------------------------------------
 
         /// <summary>Set by the hub. Worn and selected in the list: F and + / - act on it.</summary>
@@ -351,6 +358,20 @@ namespace RestraintHub
 
         /// <summary>No menu, no ring, not in an interaction area: free keys for an item's own controls.</summary>
         public static bool InputFree => !MenuOpen && !InInteractArea;
+
+        /// <summary>(2.1) The game's ecstasy gauge, the pink bar on the left: 0..1 (at 1 she climaxes and it resets). NaN outside
+        /// a stage.</summary>
+        public static float Arousal => RestraintHub.Arousal.Value;
+
+        /// <summary>(2.1) She is climaxing (the game's ecstasy motion, or its short aftermath) or the game holds the gauge (the
+        /// handcuffs' cool-down): <see cref="Arouse"/> and <see cref="Wearable.Stimulation"/> add nothing meanwhile.</summary>
+        public static bool ArousalBlocked => RestraintHub.Arousal.Blocked(out _);
+
+        /// <summary>(2.1) Arouse her once by <paramref name="amount"/> (0..1 of the gauge; a piston machine stroke is about 0.006) -
+        /// added with the next frame like the game's toys do (it also restarts the drain's slow start). Returns null when it will be
+        /// added, else why not ("she is climaxing", "switched off in the hub's config ..."). The player's <c>Arousal.Scale</c>
+        /// multiplies it. For a steady rise while an item is worn use <see cref="Wearable.Stimulation"/>.</summary>
+        public static string Arouse(float amount) => RestraintHub.Arousal.Arouse(amount);
 
         /// <summary>Show a line in the game's message bar (top of the screen, the game's warning style). Safe to call any time;
         /// does nothing outside a stage.</summary>

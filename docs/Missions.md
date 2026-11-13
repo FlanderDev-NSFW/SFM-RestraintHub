@@ -41,6 +41,10 @@ Arguments can be passed by position or by name (`RtHub_Apply("Yoke", seconds=60)
 | `RtHub_Get(id, name)` | Number / null | a value while it is on |
 | `RtHub_Set(id, name, value)` | Boolean | change a value while it is on (not if another mission locked it); clamped to what fits - read it back with `RtHub_Get` |
 | `RtHub_LastError()` | String | why this mission's last failing call failed (`""` after a success) |
+| `RtHub_Arousal()` | Number / null | her arousal (the game's ecstasy gauge, the pink bar) 0..1; at 1 she climaxes and it resets (API 2) |
+| `RtHub_Arouse(amount)` | Boolean | raise it once by `amount` (0..1; a piston machine stroke is about 0.006); refused while she climaxes (API 2) |
+| `RtHub_Stimulate(perSecond[, seconds])` | Boolean | this mission raises it steadily (masturbating is 0.05/s; no drain meanwhile); `seconds` > 0 ends it after that long, 0 = until `RtHub_Stimulate(0)` or the mission ends (API 2) |
+| `RtHub_Stimulation()` | Number | this mission's current rate per second (API 2) |
 
 ### RtHub_Apply
 
@@ -85,6 +89,7 @@ Listen with `CreateEventListener(label, name)`; the label runs at once, with `_e
 | `RtHub_Applied` | a restraint went on | `id`, `by`, `owner` |
 | `RtHub_Removed` | a restraint came off | `id`, `by`, `owner` (the mission that held it, else null) |
 | `RtHub_Escaped` | she struggled out of one (also sends `RtHub_Removed`) | `id`, `by`, `owner` |
+| `RtHub_Climax` | she climaxes (API 2) | `id` (the stimulating restraint, else null), `by` (`restraint`, `mission`, `game`), `owner` (the stimulating mission, else null) |
 
 `by` is one of: `player` (the panel), `mission` (`RtHub_Apply` / `RtHub_Remove`), `load` (loading a save),
 `struggle`, `timer`, `threadEnd`, `missionEnd`, `escapeKey`, `other`.
