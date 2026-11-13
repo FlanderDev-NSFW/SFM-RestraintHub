@@ -36,7 +36,7 @@ namespace RestraintHub
         /// <summary>The placed objects on this map: "Apart: Hogtie (1.20, 0.00, -2.40) (3 in all)"; * = she is in it (diagnostics).</summary>
         public static string PlacedStatus => Placements.Describe();
 
-        /// <summary>The ecstasy gauge and what the hub adds: "0.420, worn 0.02/s, missions 0/s, scale 1" (diagnostics).</summary>
+        /// <summary>The ecstasy gauge and what the hub adds: "0.420, worn 0.02/s, scale 1" (diagnostics).</summary>
         public static string ArousalStatus => Arousal.Status;
 
         /// <summary>Diagnostics (bridge, --allow-invoke): Hub.Arouse(amount).</summary>

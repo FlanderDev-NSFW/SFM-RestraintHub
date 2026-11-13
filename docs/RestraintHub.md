@@ -12,7 +12,7 @@ download they list as a dependency), and so can yours: the hub gives every weara
 the on-screen list, the keys F and + / -, input blocking, conflict checks and Custom Missions functions, so a restraint mod only
 has to do its own lock and its visible part. Single-player/offline only.
 
-**Status 2.0.0:** the panel, the new API and placed objects at L3 (a test plugin, then the ported restraint mods; see
+**Status 2.1.0:** arousal (`Wearable.Stimulation`, `Hub.Arouse`) at L3 with a test plugin. **2.0.0:** the panel, the new API and placed objects at L3 (a test plugin, then the ported restraint mods; see
 Verification, Known limits). Contents: [For players](#for-players) · [For modders](#for-modders-20) ·
 [Config](#config-bepinexconfigflanderdevsfmrestrainthubcfg) · [Verification](#verification)
 
@@ -54,6 +54,7 @@ Verification, Known limits). Contents: [For players](#for-players) · [For modde
 | clearing the input a worn item forbids, the refusal message | say what it forbids (`Blocks`), or adjust input in `OnInput` |
 | the "Unlocking..." gauge for the selected wearable | report the attempt's progress (`Attempt`) |
 | a short tap of F as a second key, separate from the struggle | act on it (`OnTap`) |
+| raising her ecstasy gauge (the pink bar) like the game's toys: no drain meanwhile, nothing during the climax, the player's `Arousal.Scale` (2.1) | how much per second while worn (`Stimulation`), or one push (`Hub.Arouse`) |
 | the escape key and mission removal | take it off at once (`TakeOff`) |
 | the save hooks: right after the game writes / reads a slot, a `SaveSlot` for your keys | `OnSave`, `OnLoad` |
 | noticing a new game replacing the game data without a load | take it off / away (`OnNewGame`) |
@@ -132,6 +133,23 @@ Hub.Register(stocks);
   `HubController` and `Missions` are public only for the dev bridge and may change. Full XML docs in `Hub.cs`
   (`RestraintHub.xml` next to the DLL).
 
+### Arousal (2.1)
+The game's ecstasy gauge (the pink bar on the left, `GameStateData.PlayerEcstasy`, 0..1) drains at up to 0.05/s; its toys stop
+the drain while they raise it, and at 1 the game runs its climax and resets it (details: `docs/knowledge/api-notes/player-stats.md`).
+The hub raises it the same way:
+- `Wearable.Stimulation` (`Func<float>`): the rise per second while worn - a steady toy. For scale: masturbating 0.05/s, the
+  piston machine about 0.002 - 0.03/s. The worn items' rates add up.
+- `Hub.Arouse(amount)`: one push (a piston machine stroke is about 0.006), added with the next frame; returns null or why not
+  ("she is climaxing", "switched off in the hub's config ...").
+- `Hub.Arousal` reads the gauge (NaN outside a stage); `Hub.ArousalBlocked` is true during the climax, its aftermath and the
+  game's handcuff cool-down - nothing is added then.
+- The player's `Arousal.Scale` multiplies both (0 = off). Missions use Custom Missions v2's own functions for the gauge.
+
+```csharp
+Stimulation = () => machine.State == LockState.Locked ? 0.01f * pistonSpeed : 0f,   // in the Wearable
+Hub.Arouse(0.006f);                                                                  // once per stroke
+```
+
 ### Changes from 1.x (a clean break)
 - `Restraint` is now `Wearable`; `RingValue`, `ShortcutSaveKey`, `OnShortcutsMissing` and `OnChosen` are gone - the ring menu and
   number keys are not used any more (they conflicted with other ring mods). `PutOn` and `TakeOff` are required; `PutOn`
@@ -183,6 +201,7 @@ Hub.Register(stocks);
 ### Testing with the bridge
 `game get RestraintHub.HubController::PanelStatus` ("open, tab Wearables, rows: ..."), `::Status` (the worn list),
 `::PlacedStatus` ("Residence: HogtieDevice (-25.73, -0.11, -117.02) (2 in all)", `*` = she is in it),
+`::ArousalStatus` ("0.420, worn 0.03/s, scale 1"), `game call RestraintHub.HubController Arouse 0.2`,
 `key U`, `key E`, `game click "<row label>"`, the scroll position:
 `game set '/InGameManager/InGameCanvas/MiddleCloneLayer/RestraintHubPanel/Contents/RestraintHubScroll::[UnityEngine.UI.ScrollRect].verticalNormalizedPosition' 0`.
 Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`, `free:`, `stage <Map>:`, `refused:`, `list:`, `select:`, `conflicts:`, `tap:`,
@@ -197,13 +216,14 @@ Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`,
 | Keys.EscapeHoldSeconds | 3 | how long to hold Keys.ToggleBlocking to take off all restraints (1-10) |
 | General.BlockEachOther | true | restraints that hold the same body part block each other, and restraints refuse hand actions, pose skills and peeing |
 | General.WarnMissions | true | show the Custom Missions version / connection warning in game (the log always has it) |
+| Arousal.Scale | 1 | how much restraints raise her ecstasy (0 - 3; 0 = never; the game's toys and missions are not affected) |
 | Debug.Disable | 0 | bit 1 = block no input (negative control) |
 
 ## Verification
-- L1: `./tools/dev.ps1 test RestraintHub` (50: blocking, conflicts and their wording, the worn list and its selection, tap vs
+- L1: `./tools/dev.ps1 test RestraintHub` (55: blocking, conflicts and their wording, the worn list and its selection, tap vs
   hold, the escape hold time, mission locks: owners, option updates, timers and pauses, thread / mission / keep ends, never-worn
   and came-off locks, the save format; placed objects: per-map counts, save text round trip with tabs / newlines / exact
-  floats, broken lines skipped);
+  floats, broken lines skipped; arousal: the per-frame step, pulses, scale, cap);
   `test SfmDev` (deploy / package dependencies, incl. the real projects).
 - L3 0.1.0 (2026-10-24, dev copy, first save; SpreaderBar 0.7.0, WallRestraint 1.2.0, Yoke 0.2.0):
   - load: "3 restraint entries from index 32 (page 5; 31 game entries, 1 empty)", shortcuts restored from the pre-hub save keys
@@ -325,10 +345,9 @@ Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`,
 
 - L3 2.1.0 arousal (2026-11-13; mechanics in `docs/knowledge/api-notes/player-stats.md`): a test wearable with `Stimulation`
   0.03/s -> the gauge rose exactly 0.015 per 0.5 s with no drain; `Arouse(0.2)` -> +0.2; `Arousal.Scale` 0 -> it drained and
-  `Arouse` was refused (negative control); at 1 the game's climax ran, nothing was added during it, it reset, "event: RtHub_Climax
-  Test2 by restraint". Test mission (API 2): `RtHub_Arousal` 0 -> `RtHub_Arouse(0.25)` -> 0.2498; `RtHub_Stimulate(0.04, 5)`
-  ended by its timer; `RtHub_Arouse(-1)` refused; `RtHub_Stimulate(0.05)` -> climax "by mission (owner 'RtHubTestA')"; ended with
-  the mission switched off; masturbating to a climax -> "by game". Not tested: the handcuff cool-down block.
+  `Arouse` was refused (negative control); at 1 the game's climax ran, nothing was added during it, it reset and the worn item
+  went on raising it. (Mission functions for the gauge were tested too and then removed again: Custom Missions v2 has its own.)
+  Not tested: the handcuff cool-down block.
 
 ## Known limits / next
 - Placed objects: missions can't place or pick them up (they put the in-use wearable on where she stands); "Pick up" takes the

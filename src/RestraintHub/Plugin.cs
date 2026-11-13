@@ -50,8 +50,8 @@ namespace RestraintHub
                 "Show a warning in game when the installed Custom Missions v2 is a version the hub's mission functions were not made " +
                 "for, or the hub can't connect to it (the log always has it).");
             ArousalScale = Config.Bind("Arousal", "Scale", 1f, new ConfigDescription(
-                "How much restraints and missions raise her ecstasy (the pink bar on the left): 1 = as the restraint or mission says, " +
-                "0 = never (the game's own toys and actions are not affected).", new AcceptableValueRange<float>(0f, 3f)));
+                "How much restraints raise her ecstasy (the pink bar on the left): 1 = as the restraint or mission says, " +
+                "0 = never (the game's own toys and actions, and missions, are not affected).", new AcceptableValueRange<float>(0f, 3f)));
             DebugDisable = Config.Bind("Debug", "Disable", 0, "Bit mask for tests: 1 = block no input.");
             Patches.Apply(new HarmonyLib.Harmony(PluginGuid));
             ClassInjector.RegisterTypeInIl2Cpp<HubController>();

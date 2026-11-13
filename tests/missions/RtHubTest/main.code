@@ -8,7 +8,6 @@
 #   hold ID [onEnd]                              (from a new thread kept in rt_holder)
 #   drop                                         (rt_holder = null: the thread is no longer referenced)
 #   raw FUNCTION [ID]                            (call any function with one id argument)
-#   arousal | arouse AMOUNT | stimulate PERSECOND [SECONDS] | stimulation   (API 2)
 
 rt_tag = "A"
 rt_seen = CreateList()
@@ -23,7 +22,6 @@ rt_main:
 	rt_ev1 = CreateEventListener("rt_on_event", "RtHub_Applied")
 	rt_ev2 = CreateEventListener("rt_on_event", "RtHub_Removed")
 	rt_ev3 = CreateEventListener("rt_on_event", "RtHub_Escaped")
-	rt_ev4 = CreateEventListener("rt_on_event", "RtHub_Climax")
 
 rt_poll:
 	files = GetFiles("cmd")
@@ -79,17 +77,6 @@ rt_run:
 		if w.Count() > 5 && w[5] != "-"
 			p["onEnd"] = w[5]
 		r = CallFunction("RtHub_Apply", p)
-	elseif op == "arousal"
-		r = RtHub_Arousal()
-	elseif op == "arouse"
-		r = RtHub_Arouse(ToNumber(w[2]))
-	elseif op == "stimulate"
-		if w.Count() > 3
-			r = RtHub_Stimulate(ToNumber(w[2]), seconds=ToNumber(w[3]))
-		else
-			r = RtHub_Stimulate(ToNumber(w[2]))
-	elseif op == "stimulation"
-		r = RtHub_Stimulation()
 	elseif op == "remove"
 		r = RtHub_Remove(w[2])
 	elseif op == "hold"

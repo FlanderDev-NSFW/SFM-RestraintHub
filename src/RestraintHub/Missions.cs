@@ -20,7 +20,7 @@ namespace RestraintHub
     {
         internal const string CmGuid = "SFM_custom_mission_v2";
         /// <summary>The script API's version (<c>RtHub_ApiVersion()</c>); raised when functions are added or change.</summary>
-        internal const int ApiVersion = 2;
+        internal const int ApiVersion = 1;
         /// <summary>The Custom Missions v2 version the functions were made and tested with.</summary>
         internal const string TestedVersion = "2.4";
         internal const string SaveKey = "RestraintHub.MissionLocks";
@@ -140,45 +140,7 @@ namespace RestraintHub
             });
             Reg("RtHub_Set", (a, t) => Answer(t, "RtHub_Set", Set(a, t)));
             Reg("RtHub_LastError", (a, t) => Cm.Of(_lastError.TryGetValue(Program(t) ?? "", out var e) ? e : ""));
-            // API 2: her arousal (the game's ecstasy gauge)
-            Reg("RtHub_Arousal", (a, t) => { float v = Arousal.Value; return float.IsNaN(v) ? Cm.Null : Cm.Of(Math.Round(v, 4)); });
-            Reg("RtHub_Arouse", (a, t) => Answer(t, "RtHub_Arouse", Arouse(a, t)));
-            Reg("RtHub_Stimulate", (a, t) => Answer(t, "RtHub_Stimulate", Stimulate(a, t)));
-            Reg("RtHub_Stimulation", (a, t) => Cm.Of(Math.Round(Arousal.Sources.MissionRate(Program(t)), 4)));
         }
-
-        /// <summary>RtHub_Arouse(amount): a one-off rise.</summary>
-        private static string Arouse(object args, object thread)
-        {
-            if (!InGame()) return "not in a stage";
-            object v = Cm.Arg(args, "amount", 0);
-            if (v == null) return "no amount given";
-            float amount = (float)Cm.Number(v);
-            string error = Arousal.Arouse(amount);
-            if (error == null) Plugin.Logger.LogInfo("[SFM-ACCEPT] mission '" + Program(thread) + "': arouse " + amount.ToString("0.###", CultureInfo.InvariantCulture));
-            return error;
-        }
-
-        /// <summary>RtHub_Stimulate(perSecond[, seconds]): this mission's continuous rise; 0 stops it.</summary>
-        private static string Stimulate(object args, object thread)
-        {
-            object vRate = Cm.Arg(args, "perSecond", 0), vSeconds = Cm.Arg(args, "seconds", 1);
-            if (vRate == null) return "no perSecond given";
-            float rate = (float)Cm.Number(vRate), seconds = vSeconds == null ? 0f : (float)Cm.Number(vSeconds);
-            if (float.IsNaN(rate) || rate < 0f || rate > 1f) return "perSecond must be 0 .. 1";
-            if (float.IsNaN(seconds) || seconds < 0f) return "seconds must be 0 or more";
-            string program = Program(thread);
-            Arousal.Sources.SetMission(program, rate, seconds);
-            Plugin.Logger.LogInfo("[SFM-ACCEPT] mission '" + program + "': " + (rate > 0f ? "stimulate " + rate.ToString("0.###", CultureInfo.InvariantCulture) + "/s"
-                + (seconds > 0f ? " for " + seconds.ToString("0.#", CultureInfo.InvariantCulture) + " s" : "") : "stimulation stopped"));
-            return null;
-        }
-
-        /// <summary>The mission still runs (switched on); true while Custom Missions is not connected (nothing to check).</summary>
-        internal static bool MissionRuns(string program) => Cm == null || Cm.Runs(program);
-
-        /// <summary>The game's climax started: the event for missions. <paramref name="by"/>: "restraint", "mission" or "game".</summary>
-        internal static void Climax(string id, string by, string owner) => Event("RtHub_Climax", id, by, owner);
 
         private static void Reg(string name, Func<object, object, object> fn)
         {
@@ -467,7 +429,7 @@ namespace RestraintHub
 
         private static void Event(string name, string id, string by, string owner)
         {
-            Plugin.Logger.LogInfo("[SFM-ACCEPT] event: " + name + " " + (id ?? "-") + " by " + by + (owner == null ? "" : " (owner '" + owner + "')"));
+            Plugin.Logger.LogInfo("[SFM-ACCEPT] event: " + name + " " + id + " by " + by + (owner == null ? "" : " (owner '" + owner + "')"));
             if (Cm == null) return;
             try
             {
