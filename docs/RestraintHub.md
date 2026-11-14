@@ -184,6 +184,19 @@ Hub.Arouse(0.006f);                                                             
 - **Keys:** the hub owns `U`, `B`, `V`, F and + / - for restraints. For your own keys, check the game's bindings first:
   `game call RestraintHub.HubController KeysInUse 'H P Y'`.
 
+### The phone app (`PhoneApp.cs`; 2.3, with Custom Missions v2)
+- "RestraintHub" on Custom Missions v2's phone (TAB menu), through its documented app API (`PluginGUI.RegisterApp`, `App`,
+  `Window`): **Restraints** - the panel's rows as a scroll list (put on / select, place, pick up; "Done: ..." or a pointer to the
+  refusal in the message bar; refreshed while open) - and **Config** with **Restraint mods** (the hub and every mod whose item
+  callbacks come from its assembly) and **Other mods** (all other plugins with BepInEx settings). A mod opens in Custom Missions'
+  own settings screen (`ProgramSettingsWindow`) filled from its `ConfigFile`: sections as headings, bool -> checkbox, enums and
+  `AcceptableValueList<string>` -> choices, int / float / double ranges -> sliders, everything else (key lists, numbers without a
+  range, other types) -> text in BepInEx's own form (`GetSerializedValue` / `SetSerializedValue`). Every change is written at once
+  (`BoxedValue` clamps, saves the file and raises `SettingChanged`); log "phone: <mod> <Section.Key> = <value>". Settings whose
+  description says "next time" / "restart" are marked `*` (`Logic/ConfigNotes.cs`), with a note at the top.
+- Built only when `SFM_custom_mission_v2.dll` is in the game copy (`SFM_CMV2`; CI: the API-only copy in the SFM-GameRefs package),
+  registered only when Custom Missions v2 is installed (`PhoneHook`); without it the hub works as before. Icon: `assets/phone-icon.png`.
+
 ### How keys are read (`KeyBindings.cs`, `Logic/KeySpec.cs`; 2.1)
 Input System keys are positions on a US keyboard, so a fixed key name breaks on other layouts (a user had to switch from
 Spanish to English). A character entry is resolved on the current layout: all keys whose `displayName` is that character (not
@@ -395,6 +408,15 @@ that typed it (learned) - or an Input System key name, a fixed position (`Numpad
   still plays (the game keeps its reference). Log "effects: follow the drawn body (Particle Sperm, Peeticle System, Peeticle
   System Drop, Peeticle System Revert, ShiofukiParticle)", released -> "back on her bones (5)", the squirt back under
   `PlayerBoneScaleAdjuster`. Not tested: the wall restraint (same mechanism), the pee effects while restrained.
+- L3 2.3.0 phone app (2026-11-14, Custom Missions v2 2.4.0): "phone: RestraintHub app registered"; TAB -> the padlock icon next
+  to Custom Missions' apps (screenshot) -> "RestraintHub" with Restraints / Config; Restraints listed the 5 wearables and 2
+  placeables, Yoke tapped -> "put on: Yoke", "Done: Yoke", row "Yoke [on]", worn list updated (screenshots). Config -> Restraint
+  mods: Binders, Harness, Hogtie, NippleTether, RestraintHub, SpreaderBar, WallRestraint, Yoke; Other mods: CollarAsset,
+  NipplePiercings, SfmBridge. Yoke opened in Custom Missions' settings screen (headings Debug / General / Model ..., sliders with
+  values, text fields; screenshot); slider MetalShade 0.3 -> 0.6: "phone: Yoke Model.MetalShade = 0.6", the `.cfg` and the live
+  entry 0.6; text RingLabel -> "Yoke Test": `.cfg` and live entry changed; both set back. A build against only the SFM-GameRefs
+  package (as CI) contains the app. Not tested: the mouse wheel in the lists, a refusal from the phone (blocking was off in the
+  dev copy's config), mods whose settings are read only once.
 
 ## Known limits / next
 - Placed objects: missions can't place or pick them up (they put the in-use wearable on where she stands); "Pick up" takes the

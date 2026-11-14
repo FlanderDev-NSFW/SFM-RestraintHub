@@ -4,7 +4,7 @@
   <PropertyGroup>
     <AssemblyName>RestraintHub</AssemblyName>
     <RootNamespace>RestraintHub</RootNamespace>
-    <Version>2.2.0</Version>
+    <Version>2.3.0</Version>
     <Description>RestraintHub - the restraint panel, placed objects, a worn-restraint list with a selected item and shared input for the restraint mods (SecretFlasherManaka, BepInEx IL2CPP)</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
@@ -16,6 +16,15 @@
     <Reference Include="Unity.TextMeshPro"><HintPath>$(SfmInterop)\Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(SfmInterop)\UnityEngine.ParticleSystemModule.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
+
+  <!-- Optional: the phone app for Custom Missions v2 (PhoneApp.cs) when its DLL is in the game copy (CI: in the reference
+       package). Without it the hub builds without the app. At run time the app only loads when Custom Missions v2 is there. -->
+  <PropertyGroup>
+    <SfmCmv2Dll>$(GameDir)\BepInEx\plugins\SFM_custom_mission_v2.dll</SfmCmv2Dll>
+    <DefineConstants Condition="Exists('$(SfmCmv2Dll)')">$(DefineConstants);SFM_CMV2</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="Exists('$(SfmCmv2Dll)')">
+    <Reference Include="SFM_custom_mission_v2"><HintPath>$(SfmCmv2Dll)</HintPath><Private>false</Private></Reference>  </ItemGroup>
 
   <!-- Compile the shared SfmKit sources into this DLL (internal types: invisible to the mods that reference the hub). -->
   <Import Project="$(RepoRoot)build\SfmKit.props" />

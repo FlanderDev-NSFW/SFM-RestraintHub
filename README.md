@@ -1,4 +1,4 @@
-# RestraintHub 2.2.0
+# RestraintHub 2.3.0
 
 The shared base for restraint mods in **Secret Flasher Manaka**. On its own it adds nothing you can see; the restraint mods
 (Spreader Bar, Wall Restraint, Hogtie, Yoke, Arm & Leg Binders, Nipple Tether) need it.
@@ -16,6 +16,9 @@ Then install the restraint mods you want the same way.
   **Placeables** (objects you put somewhere and use: the hogtie, the wall restraint). `Q` / `E` switch between them; the mouse
   wheel scrolls; `U` or `Esc` closes it. Click a wearable to put it on, a placeable to place it in front of her. The game keeps
   running while it is open.
+- **Phone app** (with [Custom Missions v2](https://f95zone.to/threads/263276/)): **RestraintHub** on the phone in the `TAB`
+  menu - **Restraints** (put on, place and pick up, like `U`) and **Config**: the settings of the restraint mods and of your
+  other mods, changed in game without a restart (`*` = takes effect the next time or after a restart).
 - **Placed objects** stay where they are on their map (also in the save) until you pick them up again in the panel
   ("Pick up: ...", the nearest one on this map). Walk to one and press **`F`** to get into it.
 - **Worn list:** above the face preview (bottom right) a small list shows what she wears. The selected one is marked `>`.

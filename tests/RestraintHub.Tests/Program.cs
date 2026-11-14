@@ -24,6 +24,7 @@ namespace RestraintHub.Tests
             PlacementTests();
             ArousalTests();
             KeySpecTests();
+            ConfigNoteTests();
             Console.WriteLine(_passed + " passed, " + _failed + " failed");
             return _failed == 0 ? 0 : 1;
         }
@@ -163,6 +164,15 @@ namespace RestraintHub.Tests
             Check(MissionLock.TryParseEnd(" Mission ", out var e1) && e1 == LockEnd.Mission && !MissionLock.TryParseEnd("later", out _), "onEnd names");
         }
 
+
+        private static void ConfigNoteTests()
+        {
+            Check(ConfigNotes.AppliesLater("Room inside the collar. Applies the next time she is hogtied.")
+                  && ConfigNotes.AppliesLater("Needs a RESTART of the game.") && !ConfigNotes.AppliesLater("Brightness of the device.")
+                  && !ConfigNotes.AppliesLater(null), "config: 'next time' / 'restart' marked, others not");
+            Check(ConfigNotes.Title("Pose", "ArchDegrees", "Applies the next time she is hogtied.") == "Pose: ArchDegrees *"
+                  && ConfigNotes.Title("", "Width", "cm") == "Width", "config: row titles");
+        }
 
         private static void KeySpecTests()
         {

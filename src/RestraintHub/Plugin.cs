@@ -19,7 +19,7 @@ namespace RestraintHub
     {
         public const string PluginGuid = "FlanderDev.SFM.RestraintHub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "2.2.0";
+        public const string PluginVersion = "2.3.0";
 
         internal static ManualLogSource Logger;
 
@@ -77,6 +77,7 @@ namespace RestraintHub
             AddComponent<HubController>();
             try { Missions.Init(); }
             catch (System.Exception e) { Logger.LogWarning("connecting to Custom Missions v2 failed: " + e); }
+            PhoneHook.Register(); // the "RestraintHub" app on Custom Missions v2's phone (only when it is installed)
             Logger.LogInfo("[SFM-ACCEPT] load: " + PluginName + " " + PluginVersion + " ready");
         }
     }
