@@ -19,7 +19,7 @@ namespace RestraintHub
     {
         public const string PluginGuid = "FlanderDev.SFM.RestraintHub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "2.1.0";
+        public const string PluginVersion = "2.2.0";
 
         internal static ManualLogSource Logger;
 
@@ -71,7 +71,7 @@ namespace RestraintHub
             ArousalScale = Config.Bind("Arousal", "Scale", 1f, new ConfigDescription(
                 "How much restraints raise her ecstasy (the pink bar on the left): 1 = as the restraint or mission says, " +
                 "0 = never (the game's own toys and actions, and missions, are not affected).", new AcceptableValueRange<float>(0f, 3f)));
-            DebugDisable = Config.Bind("Debug", "Disable", 0, "Bit mask for tests: 1 = block no input.");
+            DebugDisable = Config.Bind("Debug", "Disable", 0, "Bit mask for tests: 1 = block no input; 2 = leave the game's particle effects on her bones (they start where the animation alone puts her).");
             Patches.Apply(new HarmonyLib.Harmony(PluginGuid));
             ClassInjector.RegisterTypeInIl2Cpp<HubController>();
             AddComponent<HubController>();

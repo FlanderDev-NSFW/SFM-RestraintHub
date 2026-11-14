@@ -39,6 +39,9 @@ namespace RestraintHub
         /// <summary>The ecstasy gauge and what the hub adds: "0.420, worn 0.02/s, scale 1" (diagnostics).</summary>
         public static string ArousalStatus => Arousal.Status;
 
+        /// <summary>"2 effects follow the drawn body" or "off" (diagnostics).</summary>
+        public static string EffectsStatus => EffectAnchors.Status;
+
         /// <summary>Diagnostics (bridge, --allow-invoke): Hub.Arouse(amount).</summary>
         public static string Arouse(float amount) => Arousal.Arouse(amount) ?? "ok";
 
@@ -95,6 +98,8 @@ namespace RestraintHub
             foreach (var r in Hub.All) if (r.Worn) worn.Add(r.Id);
             if (GameCuffs.Real()) worn.Add(HandcuffsId);
             if (List.Update(worn)) Plugin.Logger.LogInfo("[SFM-ACCEPT] list: " + Describe());
+            try { EffectAnchors.Tick(worn.Count > (worn.Contains(HandcuffsId) ? 1 : 0) && (Plugin.DebugDisable.Value & 2) == 0); }
+            catch (Exception e) { Fail("effects", e); }
 
             bool menus = panel || GameUi.RingOpen();
             WatchToggleKey(menus);
@@ -422,6 +427,7 @@ namespace RestraintHub
         {
             _hud?.Destroy();
             Panel?.Close();
+            EffectAnchors.Release();
             if (Instance == this) Instance = null;
         }
     }

@@ -4,8 +4,8 @@
   <PropertyGroup>
     <AssemblyName>RestraintHub</AssemblyName>
     <RootNamespace>RestraintHub</RootNamespace>
-    <Version>2.1.0</Version>
-    <Description>RestraintHub - ring pages, a worn-restraint list with a selected item and shared input for the restraint mods (SecretFlasherManaka, BepInEx IL2CPP)</Description>
+    <Version>2.2.0</Version>
+    <Description>RestraintHub - the restraint panel, placed objects, a worn-restraint list with a selected item and shared input for the restraint mods (SecretFlasherManaka, BepInEx IL2CPP)</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
   </PropertyGroup>
@@ -14,6 +14,7 @@
     <Reference Include="UnityEngine.UI"><HintPath>$(SfmInterop)\UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.UIModule"><HintPath>$(SfmInterop)\UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Unity.TextMeshPro"><HintPath>$(SfmInterop)\Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(SfmInterop)\UnityEngine.ParticleSystemModule.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 
   <!-- Compile the shared SfmKit sources into this DLL (internal types: invisible to the mods that reference the hub). -->

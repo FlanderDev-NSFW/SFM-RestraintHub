@@ -38,6 +38,11 @@ Verification, Known limits). Contents: [For players](#for-players) · [For modde
   (hand actions, pose skills, peeing - running, walking and crouching stay blocked).
 - **Blocking:** while items are worn, what they take away is refused - hand actions and poses with "Can't do that with the
   <item> on.". Shift + move still ends a pose. The game's "Unlocking..." gauge shows the selected item's struggle.
+- **Effects follow the drawn body (2.2):** the game's particle effects on her bones (the climax squirt, the pee) start where
+  the animation alone would put her - Unity updates particles before `LateUpdate`, where restraint mods pose her. While something
+  is worn, `EffectAnchors.cs` hangs each world-space emitter under a helper that copies its bone's drawn pose in `Camera.onPreCull`;
+  on release they go back to their bones (log "effects: follow the drawn body (...)" / "back on her bones"). `Debug.Disable` bit 2
+  switches it off (negative control). Details: `docs/knowledge/patterns.md` section 18.
 - **Like the game's handcuffs (2.1):** a worn item that holds her arms counts as the game's handcuffs (`GameCuffs.cs`: a postfix on
   `GameStateFacade.IsAttachSomeHandcuffs`), so the game itself refuses everything it refuses in handcuffs - its `CanUseHand` asks
   that function (picking up dropped clothes, the coat, masturbating, poses; message "Unable to act: arms are restrained."), and
@@ -237,7 +242,7 @@ Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`,
 | General.ActAsHandcuffs | true | worn items that hold her arms count as the game's handcuffs (with her place: on an object in front); off while BlockEachOther is off |
 | General.WarnMissions | true | show the Custom Missions version / connection warning in game (the log always has it) |
 | Arousal.Scale | 1 | how much restraints raise her ecstasy (0 - 3; 0 = never; the game's toys and missions are not affected) |
-| Debug.Disable | 0 | bit 1 = block no input (negative control) |
+| Debug.Disable | 0 | bit 1 = block no input; bit 2 = leave the game's particle effects on her bones (negative controls) |
 
 Key settings (2.1): a comma list; each entry one character - every key labelled with it on the player's layout, and every key
 that typed it (learned) - or an Input System key name, a fixed position (`NumpadPlus`, `RightBracket`, `Backquote`, `Comma`).
@@ -384,6 +389,12 @@ that typed it (learned) - or an Input System key name, a fixed position (`Numpad
   the coat up (`activeSelf` false; negative control). F held with the yoke: the game's `UnlockProgress` stayed 0 (only the hub's
   struggle). Hogtie (forced lock at home): both true, after release both false. Not tested: Binders and the wall restraint
   (same rule, by `Holds`), third-party mods reading it.
+- L3 2.2.0 effects (2026-11-14; user report: the climax particles appear at the wrong place in a placeable restraint). Hogtie on
+  the street, climax: with `Debug.Disable` 2 the squirt's particles started at (-25.51, -0.08, -117.77), 1.1 m from her drawn
+  hips (-26.65, -0.05, -117.76); fixed, at (-26.61, -0.06, -117.83) - the emitter's own offset from the hips bone. The squirt
+  still plays (the game keeps its reference). Log "effects: follow the drawn body (Particle Sperm, Peeticle System, Peeticle
+  System Drop, Peeticle System Revert, ShiofukiParticle)", released -> "back on her bones (5)", the squirt back under
+  `PlayerBoneScaleAdjuster`. Not tested: the wall restraint (same mechanism), the pee effects while restrained.
 
 ## Known limits / next
 - Placed objects: missions can't place or pick them up (they put the in-use wearable on where she stands); "Pick up" takes the
