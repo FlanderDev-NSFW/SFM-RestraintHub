@@ -23,6 +23,7 @@ namespace RestraintHub.Tests
             LockTests();
             PlacementTests();
             ArousalTests();
+            KeySpecTests();
             Console.WriteLine(_passed + " passed, " + _failed + " failed");
             return _failed == 0 ? 0 : 1;
         }
@@ -162,6 +163,19 @@ namespace RestraintHub.Tests
             Check(MissionLock.TryParseEnd(" Mission ", out var e1) && e1 == LockEnd.Mission && !MissionLock.TryParseEnd("later", out _), "onEnd names");
         }
 
+
+        private static void KeySpecTests()
+        {
+            var e = KeySpec.Parse("+, =, NumpadPlus");
+            Check(e.Count == 3 && e[0].IsCharacter && e[0].Text == "+" && e[1].IsCharacter && !e[2].IsCharacter && e[2].Text == "NumpadPlus",
+                  "keys: characters and key names");
+            Check(KeySpec.Parse("U").Count == 1 && KeySpec.Parse("U")[0].IsCharacter, "keys: a single letter is a character (the key labelled U)");
+            Check(KeySpec.Parse(" Backquote ").Count == 1 && !KeySpec.Parse("Backquote")[0].IsCharacter, "keys: a key name, trimmed");
+            Check(KeySpec.Parse("").Count == 0 && KeySpec.Parse(" , ,").Count == 0 && KeySpec.Parse(null).Count == 0, "keys: empty entries dropped");
+            Check(KeySpec.SameLabel("U", "u") && KeySpec.SameLabel("+", "+") && !KeySpec.SameLabel("+", "=") && !KeySpec.SameLabel("ß", "SS"),
+                  "keys: labels match (letters ignore case)");
+            Check(KeySpec.Short("-, NumpadMinus") == "-" && KeySpec.Short("") == "(none)", "keys: short text for messages");
+        }
 
         private static void ArousalTests()
         {

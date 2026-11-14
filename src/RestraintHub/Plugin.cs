@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -21,8 +22,19 @@ namespace RestraintHub
         public const string PluginVersion = "2.1.0";
 
         internal static ManualLogSource Logger;
-        public static ConfigEntry<string> SelectKey, ToggleConflictsKey, OpenPanelKey;
-        public static ConfigEntry<bool> BlockEachOther, WarnMissions;
+
+        private const string KeysHelp = "One character - the key that types it on your keyboard layout - or an Input System key name " +
+            "(a fixed position: NumpadPlus, RightBracket, Backquote ...); several separated by commas. The log lists what each key " +
+            "setting means on your layout and warns when the game uses a key too.";
+
+        /// <summary>All of the hub's key settings (for the log and for learning typed characters).</summary>
+        internal static IEnumerable<ConfigEntry<string>> KeySettings()
+        {
+            foreach (var e in new[] { OpenPanelKey, SelectKey, ToggleConflictsKey, IncreaseKey, DecreaseKey })
+                if (e != null) yield return e;
+        }
+        public static ConfigEntry<string> SelectKey, ToggleConflictsKey, OpenPanelKey, IncreaseKey, DecreaseKey;
+        public static ConfigEntry<bool> BlockEachOther, WarnMissions, ActAsHandcuffs;
         public static ConfigEntry<float> EscapeSeconds, ArousalScale;
         public static ConfigEntry<int> DebugDisable;
 
@@ -30,14 +42,16 @@ namespace RestraintHub
         {
             Logger = Log;
             OpenPanelKey = Config.Bind("Keys", "OpenPanel", "U",
-                "Key that opens and closes the restraint panel (wearables and placeables). An Input System key name; the log warns if the " +
-                "game uses it too.");
+                "Key that opens and closes the restraint panel (wearables and placeables). " + KeysHelp);
             SelectKey = Config.Bind("Keys", "SelectNext", "B",
-                "Key that selects the next worn restraint (F and + / - act on the selected one). An Input System key name (B, V, " +
-                "Backquote ...); the log warns if the game uses it too.");
+                "Key that selects the next worn restraint (F and + / - act on the selected one). " + KeysHelp);
             ToggleConflictsKey = Config.Bind("Keys", "ToggleBlocking", "V",
                 "Key that switches General.BlockEachOther on / off with a tap; held for Keys.EscapeHoldSeconds it takes off every " +
-                "restraint, also ones a mission locked (an Input System key name; the log warns if the game uses it too).");
+                "restraint, also ones a mission locked. " + KeysHelp);
+            IncreaseKey = Config.Bind("Keys", "Increase", "+, =, NumpadPlus",
+                "Keys that raise the selected restraint's value (width, height, length ...; held: repeats). " + KeysHelp);
+            DecreaseKey = Config.Bind("Keys", "Decrease", "-, NumpadMinus",
+                "Keys that lower the selected restraint's value (held: repeats). " + KeysHelp);
             EscapeSeconds = Config.Bind("Keys", "EscapeHoldSeconds", 3f, new ConfigDescription(
                 "How long to hold Keys.ToggleBlocking to take off all restraints (the way out of anything a mission locked).",
                 new AcceptableValueRange<float>(1f, 10f)));
@@ -46,6 +60,11 @@ namespace RestraintHub
                 "restraints refuse the animations they forbid (hand actions, pose skills, peeing). Off: they may be worn together - the " +
                 "one that poses a body part last wins it - and those animations are allowed (running, moving, crouching stay blocked). " +
                 "Toggled in game with Keys.ToggleBlocking.");
+            ActAsHandcuffs = Config.Bind("General", "ActAsHandcuffs", true,
+                "Restraints that hold her arms (yoke, binders, hogtie, wall restraint ...) count as the game's handcuffs: the game refuses " +
+                "what it refuses in handcuffs (picking things up, the coat, masturbating, poses ...), and other mods that ask the game see " +
+                "handcuffs; ones that also hold her in place count as handcuffs on an object in front. Off while General.BlockEachOther " +
+                "is off.");
             WarnMissions = Config.Bind("General", "WarnMissions", true,
                 "Show a warning in game when the installed Custom Missions v2 is a version the hub's mission functions were not made " +
                 "for, or the hub can't connect to it (the log always has it).");

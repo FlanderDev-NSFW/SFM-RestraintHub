@@ -61,8 +61,8 @@ namespace RestraintHub
         private static bool Pressed(string keyName, ref bool wasDown)
         {
             var kb = Keyboard.current;
-            if (kb == null || !Enum.TryParse(keyName, true, out Key k) || k == Key.None) return false;
-            bool down = kb[k].isPressed, pressed = down && !wasDown;
+            if (kb == null) return false;
+            bool down = KeyBindings.Held(keyName), pressed = down && !wasDown;
             wasDown = down;
             return pressed;
         }

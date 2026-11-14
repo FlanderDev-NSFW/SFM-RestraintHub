@@ -71,7 +71,9 @@ namespace RestraintHub
 
         /// <summary>The body parts it holds. While <c>General.BlockEachOther</c> is on (the default; the player toggles it with
         /// <c>V</c>) the hub refuses a wearable that needs a part a worn one holds - the game's handcuffs hold
-        /// <see cref="BodyParts.Arms"/>. With blocking off, two may pose the same bones: whichever writes them last in
+        /// <see cref="BodyParts.Arms"/>. (2.1) While worn, <see cref="BodyParts.Arms"/> makes it count as the game's handcuffs
+        /// (the game refuses what it refuses in handcuffs; mods asking the game see handcuffs), with <see cref="BodyParts.Spot"/>
+        /// as handcuffs on an object in front (player option <c>General.ActAsHandcuffs</c>). With blocking off, two may pose the same bones: whichever writes them last in
         /// <c>LateUpdate</c> wins.</summary>
         public BodyParts Holds;
 

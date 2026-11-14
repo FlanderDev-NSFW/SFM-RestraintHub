@@ -24,6 +24,12 @@ namespace RestraintHub
             Hook(AccessTools.Method(typeof(TempUnlockPanelView), nameof(TempUnlockPanelView.OnLateUpdate)), nameof(UnlockPanelPostfix));
             Hook(AccessTools.Method(typeof(SaveManager), nameof(SaveManager.Load)), nameof(LoadPostfix));
             Hook(AccessTools.Method(typeof(SaveManager), nameof(SaveManager.Save)), nameof(SavePostfix));
+            // Worn items that hold her arms count as the game's handcuffs (GameCuffs).
+            Hook(AccessTools.Method(typeof(GameStateFacade), nameof(GameStateFacade.IsAttachSomeHandcuffs)), nameof(SomeHandcuffsPostfix));
+            Hook(AccessTools.PropertyGetter(typeof(GameStateData), nameof(GameStateData.PlayerIsAttachMapHandcuffs)), nameof(MapHandcuffsPostfix));
+            // Which key types "+" / "-" on the player's layout (KeyBindings); optional - without it the key labels still count.
+            try { Hook(AccessTools.Method(typeof(UnityEngine.InputSystem.Keyboard), nameof(UnityEngine.InputSystem.Keyboard.OnTextInput)), nameof(TextInputPostfix)); }
+            catch (Exception e) { Plugin.Logger.LogWarning("typed-character hook not installed (keys are found by their labels only): " + e.Message); }
         }
 
         // --- input: F for the selected restraint; what the worn restraints take away ----------------------------------------
@@ -48,7 +54,7 @@ namespace RestraintHub
                 }
                 // Only the selected item may be struggled with: while a mod restraint is selected, F does not start the game's
                 // handcuff struggle (outside interaction areas only - there F is the area's).
-                if (GameStateFacade.IsAttachSomeHandcuffs() && !c.HandcuffsSelected && c.List.Selected != null && !c.InInteractAreaCached)
+                if (GameCuffs.Real() && !c.HandcuffsSelected && c.List.Selected != null && !c.InInteractAreaCached)
                     __result.Interact = false;
                 if (blocks != Blocks.None && (Plugin.DebugDisable.Value & 1) == 0) Apply(__result, blocks, first);
                 foreach (var r in Hub.All)
@@ -95,6 +101,15 @@ namespace RestraintHub
             _refusedAt = Time.unscaledTime;
             Hub.Message("Can't do that with the " + handsBy.Name + " on.");
             Plugin.Logger.LogInfo("[SFM-ACCEPT] refused: an action blocked by " + handsBy.Id);
+        }
+
+        private static void SomeHandcuffsPostfix(ref bool __result) => GameCuffs.SomeHandcuffsPostfix(ref __result);
+        private static void MapHandcuffsPostfix(ref bool __result) => GameCuffs.MapHandcuffsPostfix(ref __result);
+
+        private static void TextInputPostfix(char character)
+        {
+            try { KeyBindings.OnTextInput(character); }
+            catch (Exception e) { HubController.Fail("text input hook", e); }
         }
 
         // --- the game's "Unlocking..." gauge shows the selected restraint's attempt ------------------------------------------

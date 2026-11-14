@@ -86,7 +86,7 @@ namespace RestraintHub
             var items = c.List.Items;
             if (items.Count == 0) { Hide(); return; }
             if (!Ensure()) return;
-            string key = Plugin.SelectKey.Value;
+            string key = Logic.KeySpec.Short(Plugin.SelectKey.Value);
             // Header with the select key (only useful with more than one), then one row per worn restraint.
             var lines = new List<(string Key, string Name, bool Bright)>();
             if (items.Count > 1) lines.Add((key, Plugin.BlockEachOther.Value ? "Next restraint" : "Next restraint (overlap on)", false));

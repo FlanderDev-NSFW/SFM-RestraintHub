@@ -32,10 +32,17 @@ Then install the restraint mods you want the same way.
 
 In menus and interaction areas (closet, PC ...) the keys keep their normal job: step out of the area first.
 
+All of these keys (except `F`) can be changed in the settings, also `+` / `-` (`Keys.Increase`, `Keys.Decrease`). `+` and `-`
+are the keys that type them on your keyboard layout (Spanish, German, French ... too); if one does not react, type it once
+anywhere in the game, or set a fixed key such as `RightBracket` - the BepInEx log lists which key each setting uses.
+
 - **Arousal** (2.1): restraints made for it can raise her ecstasy (the pink bar on the left) while she wears them, like the
   game's toys - at the top she climaxes as usual. `Arousal.Scale` in the settings makes it stronger, weaker or switches it off.
 - **Blocking:** while a restraint is on, what it takes away (running, using her hands, pose skills ...) is refused with a
-  message. With `V` switched off, restraints may overlap and fewer actions are refused.
+  message. Restraints that hold her arms (yoke, binders, hogtie, wall restraint) count as the game's handcuffs: everything the
+  game refuses in handcuffs is refused too (picking up clothes, the coat ...), and other mods see her as handcuffed - the hogtie
+  and the wall restraint as handcuffed to an object. With `V` switched off, restraints may overlap and fewer actions are refused
+  (and they no longer count as handcuffs).
 - **Missions** (optional, with [Custom Missions v2](https://f95zone.to/threads/263276/) 2.4): missions can put restraints on her
   and lock them - for a while, or until the mission ends. A locked restraint shows `[locked]` (and the time left) in the list,
   and F does not free her from it; holding `V` for 3 seconds always takes everything off. If the installed Custom Missions
@@ -44,7 +51,8 @@ In menus and interaction areas (closet, PC ...) the keys keep their normal job: 
 **2.0 needs restraint mods made for 2.0.** The ring menu and number keys are no longer used: restraints are only in the panel.
 
 ## Settings
-`BepInEx/config/FlanderDev.SFM.RestraintHub.cfg` (created on the first start): the keys for `U`, `B` and `V`, how long `V` must be
+`BepInEx/config/FlanderDev.SFM.RestraintHub.cfg` (created on the first start): the keys for `U`, `B`, `V` and `+` / `-` (one
+character - the key that types it - or a key name, several separated by commas, e.g. `+, NumpadPlus`), how long `V` must be
 held to take everything off, whether restraints block each other, how much restraints arouse her (`Arousal.Scale`, 0 = not at
 all), and whether to warn about the Custom Missions version.
 

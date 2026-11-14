@@ -93,7 +93,7 @@ namespace RestraintHub
             // What is worn now, in registration order (the list keeps the order things were put on).
             var worn = new List<string>();
             foreach (var r in Hub.All) if (r.Worn) worn.Add(r.Id);
-            if (GameStateFacade.IsAttachSomeHandcuffs()) worn.Add(HandcuffsId);
+            if (GameCuffs.Real()) worn.Add(HandcuffsId);
             if (List.Update(worn)) Plugin.Logger.LogInfo("[SFM-ACCEPT] list: " + Describe());
 
             bool menus = panel || GameUi.RingOpen();
@@ -176,7 +176,7 @@ namespace RestraintHub
         {
             var worn = new List<(string, BodyParts)>();
             foreach (var r in Hub.All) if (r.Worn) worn.Add((r.Name, r.Holds));
-            if (GameState.GameStateData != null && (GameStateFacade.IsAttachSomeHandcuffs() || GameState.GameStateData.PlayerIsAttachMapHandcuffs))
+            if (GameState.GameStateData != null && GameCuffs.Real())
                 worn.Add(("handcuffs", BodyParts.Arms));
             return worn;
         }
@@ -268,8 +268,8 @@ namespace RestraintHub
         private static bool Pressed(string keyName, ref bool wasDown)
         {
             var kb = Keyboard.current;
-            if (kb == null || !Enum.TryParse(keyName, true, out Key key) || key == Key.None) return false;
-            bool down = kb[key].isPressed;
+            if (kb == null) return false;
+            bool down = KeyBindings.Held(keyName);
             bool pressed = down && !wasDown;
             wasDown = down;
             return pressed;
@@ -285,7 +285,7 @@ namespace RestraintHub
         private void WatchToggleKey(bool menus)
         {
             var kb = Keyboard.current;
-            bool down = !menus && kb != null && Enum.TryParse(Plugin.ToggleConflictsKey.Value, true, out Key key) && key != Key.None && kb[key].isPressed;
+            bool down = !menus && kb != null && KeyBindings.Held(Plugin.ToggleConflictsKey.Value);
             if (menus) { _toggle.Cancel(); _escaped = _escapeHinted = false; return; }
             bool tapped = _toggle.Update(down, Time.unscaledDeltaTime);
             if (!down) _escaped = _escapeHinted = false;
@@ -302,7 +302,7 @@ namespace RestraintHub
             if (!_escapeHinted && List.Items.Count > 0)
             {
                 _escapeHinted = true;
-                Hub.Message("Keep holding " + Plugin.ToggleConflictsKey.Value + " to take off all restraints.");
+                Hub.Message("Keep holding " + KeySpec.Short(Plugin.ToggleConflictsKey.Value) + " to take off all restraints.");
             }
             if (_toggle.HeldFor < Plugin.EscapeSeconds.Value) return;
             _escaped = true;
@@ -315,36 +315,31 @@ namespace RestraintHub
         {
             if (InputManager.Instance == null) return;
             _bindingsChecked = true;
-            CheckBinding(Plugin.SelectKey, "select key");
-            CheckBinding(Plugin.ToggleConflictsKey, "overlap toggle key");
-            CheckBinding(Plugin.OpenPanelKey, "panel key");
+            KeyBindings.LogSettings("start");
+            foreach (var entry in Plugin.KeySettings()) CheckBinding(entry);
         }
 
         [HideFromIl2Cpp]
-        private static void CheckBinding(BepInEx.Configuration.ConfigEntry<string> entry, string what)
+        private static void CheckBinding(BepInEx.Configuration.ConfigEntry<string> entry)
         {
             try
             {
                 string name = entry.Definition.Section + "." + entry.Definition.Key;
-                var clashes = GameUses(entry.Value, out Key key);
-                if (clashes == null)
+                foreach (var key in KeyBindings.Resolve(entry.Value))
                 {
-                    Plugin.Logger.LogWarning(name + " '" + entry.Value + "' is not an Input System key name; the key does nothing.");
-                    return;
+                    var clashes = GameUses(key);
+                    if (clashes.Count == 0) Plugin.Logger.LogInfo("[SFM-ACCEPT] keys: " + name + " " + key.keyCode + " is not bound by the game");
+                    else Plugin.Logger.LogWarning(name + " " + key.keyCode + " is also the game's " + string.Join(", ", clashes) + " - pick another key.");
                 }
-                if (clashes.Count == 0) Plugin.Logger.LogInfo("[SFM-ACCEPT] keys: " + what + " " + key + " is not bound by the game");
-                else Plugin.Logger.LogWarning(name + " " + key + " is also the game's " + string.Join(", ", clashes) + " - pick another key.");
             }
             catch (Exception e) { Fail("checking the game's key bindings", e); }
         }
 
-        /// <summary>The game's actions bound to a key (Input System key name); null if it is not a key.</summary>
+        /// <summary>The game's actions bound to a key.</summary>
         [HideFromIl2Cpp]
-        private static List<string> GameUses(string keyName, out Key key)
+        private static List<string> GameUses(UnityEngine.InputSystem.Controls.KeyControl key)
         {
-            var kb = Keyboard.current;
-            if (kb == null || !Enum.TryParse(keyName, true, out key) || key == Key.None) { key = Key.None; return null; }
-            string want = "/" + kb[key].name;
+            string want = "/" + key.name;
             var clashes = new List<string>();
             foreach (InputManager.InputType type in Enum.GetValues(typeof(InputManager.InputType)))
             {
@@ -369,10 +364,23 @@ namespace RestraintHub
             var parts = new List<string>();
             foreach (string k in keyNames.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             {
-                var uses = GameUses(k, out _);
-                parts.Add(k + ": " + (uses == null ? "not a key" : uses.Count == 0 ? "free" : string.Join(",", uses)));
+                var keys = KeyBindings.Resolve(k);
+                if (keys.Count == 0) { parts.Add(k + ": not a key"); continue; }
+                foreach (var key in keys)
+                {
+                    var uses = GameUses(key);
+                    parts.Add(k + " (" + key.keyCode + "): " + (uses.Count == 0 ? "free" : string.Join(",", uses)));
+                }
             }
             return string.Join("; ", parts);
+        }
+
+        /// <summary>Diagnostics: what each key setting means on the current layout.</summary>
+        public static string KeySettings()
+        {
+            var parts = new List<string>();
+            foreach (var e in Plugin.KeySettings()) parts.Add(e.Definition.Key + ": " + KeyBindings.Describe(e.Value));
+            return string.Join(" | ", parts);
         }
 
         // --- save identity -------------------------------------------------------------------------------------------------

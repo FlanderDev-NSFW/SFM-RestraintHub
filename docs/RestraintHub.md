@@ -38,6 +38,13 @@ Verification, Known limits). Contents: [For players](#for-players) · [For modde
   (hand actions, pose skills, peeing - running, walking and crouching stay blocked).
 - **Blocking:** while items are worn, what they take away is refused - hand actions and poses with "Can't do that with the
   <item> on.". Shift + move still ends a pose. The game's "Unlocking..." gauge shows the selected item's struggle.
+- **Like the game's handcuffs (2.1):** a worn item that holds her arms counts as the game's handcuffs (`GameCuffs.cs`: a postfix on
+  `GameStateFacade.IsAttachSomeHandcuffs`), so the game itself refuses everything it refuses in handcuffs - its `CanUseHand` asks
+  that function (picking up dropped clothes, the coat, masturbating, poses; message "Unable to act: arms are restrained."), and
+  mods that ask the game see handcuffs. An item that also holds her place (`BodyParts.Spot`: hogtie, wall restraint) counts as
+  handcuffs on an object in front (postfix on the getter `GameStateData.PlayerIsAttachMapHandcuffs` - read by mods; the game's own
+  logic reads the field). The game's handcuff struggle, arm pose, model and save are not affected (they read the fields). Off while
+  blocking is off (`V`) or with `General.ActAsHandcuffs` false. The hub's own checks read the real handcuffs (`GameCuffs.Real`).
 - **Escape:** holding **`V`** for `Keys.EscapeHoldSeconds` (3 s) takes off every worn item, also ones a mission locked.
 - **Missions:** with Custom Missions v2 installed, mission scripts get `RtHub_*` functions and events ([Missions.md](Missions.md)).
 
@@ -172,6 +179,16 @@ Hub.Arouse(0.006f);                                                             
 - **Keys:** the hub owns `U`, `B`, `V`, F and + / - for restraints. For your own keys, check the game's bindings first:
   `game call RestraintHub.HubController KeysInUse 'H P Y'`.
 
+### How keys are read (`KeyBindings.cs`, `Logic/KeySpec.cs`; 2.1)
+Input System keys are positions on a US keyboard, so a fixed key name breaks on other layouts (a user had to switch from
+Spanish to English). A character entry is resolved on the current layout: all keys whose `displayName` is that character (not
+just the first, as `FindKeyOnCurrentKeyboardLayout` returns), plus keys learned from typing - a Harmony postfix on
+`Keyboard.OnTextInput` notes which key was down when a character used by a setting was typed (Shift / AltGr combinations
+included, e.g. "+" = Shift + "=" on US). Cached per layout; a layout change clears it and is logged. At start the log lists
+each setting ("keys: Keys.Increase = '+' = NumpadPlus '+'; '=' = Equals '='; ...") and warns about entries that find no key.
+Diagnostics: `game call RestraintHub.HubController KeySettings`, `KeysInUse 'J K +'`. Details:
+`docs/knowledge/api-notes/ui-and-input.md` "Keyboard layouts".
+
 ### How the panel works (`HubPanel.cs`)
 - `InGameUiManager.Instance.Open(AssetReferencer.Instance.ChooseDildoPanel, false)` opens the game's dildo choice panel under
   `InGameCanvas/MiddleCloneLayer`; the game then shows the cursor, holds the player's input, closes it on Escape and keeps
@@ -210,20 +227,26 @@ Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`,
 ## Config (`BepInEx/config/FlanderDev.SFM.RestraintHub.cfg`)
 | Key | Default | Meaning |
 |---|---|---|
-| Keys.OpenPanel | U | Input System key name that opens and closes the panel |
-| Keys.SelectNext | B | Input System key name that selects the next worn restraint |
+| Keys.OpenPanel | U | opens and closes the panel |
+| Keys.SelectNext | B | selects the next worn restraint |
+| Keys.Increase | `+, =, NumpadPlus` | + for the selected restraint (held: repeats after 0.4 s, then every 0.08 s) |
+| Keys.Decrease | `-, NumpadMinus` | - for the selected restraint |
 | Keys.ToggleBlocking | V | tapped: switches General.BlockEachOther (K is the game's Costume key; J, L, M, I, O are taken too); held: the escape |
 | Keys.EscapeHoldSeconds | 3 | how long to hold Keys.ToggleBlocking to take off all restraints (1-10) |
 | General.BlockEachOther | true | restraints that hold the same body part block each other, and restraints refuse hand actions, pose skills and peeing |
+| General.ActAsHandcuffs | true | worn items that hold her arms count as the game's handcuffs (with her place: on an object in front); off while BlockEachOther is off |
 | General.WarnMissions | true | show the Custom Missions version / connection warning in game (the log always has it) |
 | Arousal.Scale | 1 | how much restraints raise her ecstasy (0 - 3; 0 = never; the game's toys and missions are not affected) |
 | Debug.Disable | 0 | bit 1 = block no input (negative control) |
 
+Key settings (2.1): a comma list; each entry one character - every key labelled with it on the player's layout, and every key
+that typed it (learned) - or an Input System key name, a fixed position (`NumpadPlus`, `RightBracket`, `Backquote`, `Comma`).
+
 ## Verification
-- L1: `./tools/dev.ps1 test RestraintHub` (55: blocking, conflicts and their wording, the worn list and its selection, tap vs
+- L1: `./tools/dev.ps1 test RestraintHub` (61: blocking, conflicts and their wording, the worn list and its selection, tap vs
   hold, the escape hold time, mission locks: owners, option updates, timers and pauses, thread / mission / keep ends, never-worn
   and came-off locks, the save format; placed objects: per-map counts, save text round trip with tabs / newlines / exact
-  floats, broken lines skipped; arousal: the per-frame step, pulses, scale, cap);
+  floats, broken lines skipped; arousal: the per-frame step, pulses, scale, cap; key settings: characters vs key names, labels);
   `test SfmDev` (deploy / package dependencies, incl. the real projects).
 - L3 0.1.0 (2026-10-24, dev copy, first save; SpreaderBar 0.7.0, WallRestraint 1.2.0, Yoke 0.2.0):
   - load: "3 restraint entries from index 32 (page 5; 31 game entries, 1 empty)", shortcuts restored from the pre-hub save keys
@@ -348,6 +371,19 @@ Log markers: `register:`, `panel:`, `put on:`, `placed:`, `picked up:`, `used:`,
   `Arouse` was refused (negative control); at 1 the game's climax ran, nothing was added during it, it reset and the worn item
   went on raising it. (Mission functions for the gauge were tested too and then removed again: Custom Missions v2 has its own.)
   Not tested: the handcuff cool-down block.
+- L3 2.1.0 keys (2026-11-14, US layout; Spreader Bar width as the readout): start log lists every setting ('+' = NumpadPlus,
+  '=' = Equals, '-' = Minus and NumpadMinus), "typed-character hook" installed. Defaults: Equals / NumpadPlus +1 cm, Minus /
+  NumpadMinus -1 cm, RightBracket nothing. Configured `RightBracket` / `Slash` (the Spanish + / - positions): they worked, Equals /
+  Minus no longer did (negative control). Learning: `Keys.Increase` = "{" -> warning "no key is labelled '{'", LeftBracket did
+  nothing; LeftBracket held + `InputSystem.QueueTextEvent('{')` -> "'{' is typed with LeftBracket (learned)", then LeftBracket +1 cm
+  (also repeating while held). A key the game uses for a ring (Digit3) is learned but steps are ignored while the ring is open,
+  as for any menu. Not tested: a real non-US Windows layout (not switched on this PC).
+- L3 2.1.0 handcuffs (2026-11-14; probe plugin first, see `docs/knowledge/api-notes/poses-and-restraints.md`): Yoke on ->
+  `IsAttachSomeHandcuffs()` true, `PlayerIsAttachMapHandcuffs` false, worn list "Yoke" only (no "Handcuffs"); F at the dropped coat
+  -> "Unable to act: arms are restrained." (screenshot), the coat stayed (`activeSelf` true); `V` (blocking off) -> false, F picked
+  the coat up (`activeSelf` false; negative control). F held with the yoke: the game's `UnlockProgress` stayed 0 (only the hub's
+  struggle). Hogtie (forced lock at home): both true, after release both false. Not tested: Binders and the wall restraint
+  (same rule, by `Holds`), third-party mods reading it.
 
 ## Known limits / next
 - Placed objects: missions can't place or pick them up (they put the in-use wearable on where she stands); "Pick up" takes the

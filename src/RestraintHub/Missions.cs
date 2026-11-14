@@ -108,13 +108,13 @@ namespace RestraintHub
             {
                 var ids = new List<object>();
                 foreach (var r in Hub.All) if (r.Worn) ids.Add(Cm.Of(r.Id));
-                if (InGame() && GameStateFacade.IsAttachSomeHandcuffs()) ids.Add(Cm.Of(HandcuffsName));
+                if (InGame() && GameCuffs.Real()) ids.Add(Cm.Of(HandcuffsName));
                 return Cm.List(ids);
             });
             Reg("RtHub_IsOn", (a, t) =>
             {
                 string id = Cm.Text(Cm.Arg(a, "id", 0));
-                if (id == HandcuffsName) return Cm.Of(InGame() && GameStateFacade.IsAttachSomeHandcuffs());
+                if (id == HandcuffsName) return Cm.Of(InGame() && GameCuffs.Real());
                 var r = HubController.Find(id);
                 return Cm.Of(r != null && r.Worn);
             });

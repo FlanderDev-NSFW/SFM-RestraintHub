@@ -1,4 +1,3 @@
-# Caught & Restrained - an example mission for RestraintHub's mission functions (RestraintHub's docs/Missions.md).
 # When someone finds her, a restraint that fits where she stands is locked on for a while - instead of a Game Over.
 
 caught_current = null
@@ -18,7 +17,7 @@ caught_watch:
 		if caught_current == null || !RtHub_IsOn(caught_current)
 			caught_punish()
 
-# A random restraint that can go on here (RtHub_CanApply knows about walls, room on the floor and what she already wears).
+# A random restraint that fits her positions (RtHub_CanApply knows about walls, room on the floor and what she already wears).
 caught_punish:
 	choices = CreateList()
 	for id in RtHub_List()
