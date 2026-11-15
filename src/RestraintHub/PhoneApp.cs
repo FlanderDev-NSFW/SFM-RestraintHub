@@ -116,9 +116,11 @@ namespace RestraintHub
         public HubMainWindow() : base("RestraintHub", HubPhoneApp.Background)
         {
             var list = PhoneUi.List(this);
+            PhoneUi.Note(list, "Use Restraints (also with U).", 18f);
             PhoneUi.Row(list, "Restraints", () => ShowWindow(new HubRestraintsWindow()));
-            PhoneUi.Row(list, "Config", () => ShowWindow(new HubConfigWindow()));
-            PhoneUi.Note(list, "Restraints: put on wearables, place and pick up placeables (also with U). Config: settings of the installed mods, without a restart.", 24f);
+
+            PhoneUi.Note(list, "Change settings of mods, without a restart. `*` might requires restart. EXPERIMENTAL.", 18f);
+            PhoneUi.Row(list, "Config (.cfg files)", () => ShowWindow(new HubConfigWindow()));
         }
     }
 

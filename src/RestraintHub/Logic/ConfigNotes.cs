@@ -21,6 +21,6 @@ namespace RestraintHub.Logic
         public static string Title(string section, string key, string description) =>
             (string.IsNullOrEmpty(section) ? key : section + ": " + key) + (AppliesLater(description) ? " *" : "");
 
-        public const string LaterNote = "Changes are saved at once. * = takes effect the next time (e.g. the next time it is put on) or after a restart.";
+        public const string LaterNote = "Changes are saved imidietly. `*` might require restart.";
     }
 }
