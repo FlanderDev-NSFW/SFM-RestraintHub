@@ -19,7 +19,7 @@ namespace RestraintHub
     {
         public const string PluginGuid = "FlanderDev.SFM.RestraintHub";
         public const string PluginName = "RestraintHub";
-        public const string PluginVersion = "2.3.0";
+        public const string PluginVersion = "2.3.2";
 
         internal static ManualLogSource Logger;
 

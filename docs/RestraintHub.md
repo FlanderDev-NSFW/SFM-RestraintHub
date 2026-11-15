@@ -417,6 +417,15 @@ that typed it (learned) - or an Input System key name, a fixed position (`Numpad
   entry 0.6; text RingLabel -> "Yoke Test": `.cfg` and live entry changed; both set back. A build against only the SFM-GameRefs
   package (as CI) contains the app. Not tested: the mouse wheel in the lists, a refusal from the phone (blocking was off in the
   dev copy's config), mods whose settings are read only once.
+- L3 2.3.2 fixes (2026-11-15; user reports with 2.3.x: "the arm and leg binders turn me into some tortured cube shape", "the phone
+  is only a black screen"; going back to 2.0 fixed both). Binders: reproduced with the released 2.3.1 zip and blocking on (the
+  default; the dev copy had it off): "Unable to act: arms are restrained." repeated and she stayed half standing in the binders'
+  crawl pose (screenshot) - the 2.1 handcuff answer made the game refuse the crouch the Binders ask for. Fixed: a crouch that a
+  worn item's `OnInput` asks for drops the handcuff answer for that frame and the next (`GameCuffs.AllowCrouch`) -> crawling, no
+  messages, the answer still true; the player's own C with the yoke is still refused (`IsCrouch` false). Phone: not reproduced
+  (the released 2.3.1 showed the app and the phone normally with Custom Missions v2 2.4.0); hardened instead: the app is added only
+  for Custom Missions 2.4.x, and its button / window code can no longer throw into Custom Missions' menu build (an exception there
+  can leave the phone black). Still open: the players' Custom Missions version and logs.
 
 ## Known limits / next
 - Placed objects: missions can't place or pick them up (they put the in-use wearable on where she stands); "Pick up" takes the

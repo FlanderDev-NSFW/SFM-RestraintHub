@@ -57,8 +57,11 @@ namespace RestraintHub
                 if (GameCuffs.Real() && !c.HandcuffsSelected && c.List.Selected != null && !c.InInteractAreaCached)
                     __result.Interact = false;
                 if (blocks != Blocks.None && (Plugin.DebugDisable.Value & 1) == 0) Apply(__result, blocks, first);
+                bool crouchBefore = __result.JustCrouch;
                 foreach (var r in Hub.All)
                     if (r.OnInput != null && r.Worn) r.OnInput(__result);
+                // The game refuses crouching in handcuffs; a worn item that asks for it (Binders keep her crawling) gets it.
+                if (__result.JustCrouch && !crouchBefore) GameCuffs.AllowCrouch();
             }
             catch (Exception e) { HubController.Fail("input hook", e); }
         }

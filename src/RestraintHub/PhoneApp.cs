@@ -30,9 +30,33 @@ namespace RestraintHub
         internal static readonly Color ButtonColor = new Color(0.78f, 0.78f, 0.80f);
         internal static readonly Color Accent = new Color(0.55f, 0.12f, 0.35f);
 
-        public override Window InitializeWindow() => new HubMainWindow();
+        // Custom Missions builds its whole phone menu in one go: an exception from an app's button or window leaves the phone
+        // black. So nothing from here may throw - the work is in separate methods (a missing member of another Custom Missions
+        // version fails when that method is compiled, which the caller's try/catch sees).
+        public override Window InitializeWindow()
+        {
+            try { return MakeMainWindow(); }
+            catch (Exception e) { HubController.Fail("phone window", e); return null; }
+        }
 
         public override GameObject CreateButton(GameObject parent, float size)
+        {
+            try { return MakeButton(parent, size); }
+            catch (Exception e)
+            {
+                HubController.Fail("phone button", e);
+                var empty = new GameObject("RestraintHubAppButton (failed)");
+                empty.AddComponent<RectTransform>();
+                if (parent != null) empty.transform.SetParent(parent.transform, false);
+                return empty;
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static Window MakeMainWindow() => new HubMainWindow();
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private GameObject MakeButton(GameObject parent, float size)
         {
             string icon = Path.Combine(Path.GetDirectoryName(typeof(HubPhoneApp).Assembly.Location) ?? "", "phone-icon.png");
             if (!File.Exists(icon)) icon = Path.Combine(GUIfolder, "gear.png");
@@ -378,6 +402,14 @@ namespace RestraintHub
         {
 #if SFM_CMV2
             if (!BepInEx.Unity.IL2CPP.IL2CPPChainloader.Instance.Plugins.TryGetValue(Missions.CmGuid, out var info) || info.Instance == null) return;
+            // Only with the Custom Missions version the app was built and tested with: its app API may differ in others, and a
+            // broken app can leave the whole phone black (user reports with 2.3.x).
+            var v = info.Metadata.Version;
+            if (v.Major + "." + v.Minor != Missions.TestedVersion)
+            {
+                Plugin.Logger.LogWarning("phone app not added: Custom Missions v2 " + v + " (the app is made for " + Missions.TestedVersion + ".x)");
+                return;
+            }
             try { RegisterInner(); }
             catch (Exception e) { Plugin.Logger.LogWarning("phone app not added to Custom Missions v2: " + e.Message); }
 #endif

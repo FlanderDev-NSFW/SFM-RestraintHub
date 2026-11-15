@@ -1,4 +1,4 @@
-# RestraintHub 2.3.0
+# RestraintHub 2.3.2
 
 The shared base for restraint mods in **Secret Flasher Manaka**. On its own it adds nothing you can see; the restraint mods
 (Spreader Bar, Wall Restraint, Hogtie, Yoke, Arm & Leg Binders, Nipple Tether) need it.

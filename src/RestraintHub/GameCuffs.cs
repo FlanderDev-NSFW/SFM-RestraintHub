@@ -24,10 +24,18 @@ namespace RestraintHub
             finally { _bypass--; }
         }
 
+        private static int _crouchFrame = -10;
+
+        /// <summary>A worn item asked for a crouch this frame (its <c>OnInput</c> set <c>JustCrouch</c>): the game refuses crouching in
+        /// handcuffs, so the answer is "not handcuffed" for this frame and the next. Without it the Binders (which keep her crawling)
+        /// left her standing in their crawl pose - "a tortured cube" [user reports, reproduced 2026-11-15 with 2.3.1].</summary>
+        internal static void AllowCrouch() => _crouchFrame = UnityEngine.Time.frameCount;
+
         /// <summary>A worn item holds her arms (and, for <paramref name="inPlace"/>, her place too) and the hub acts as handcuffs.</summary>
         internal static bool Holding(bool inPlace)
         {
             if (_bypass > 0 || !Plugin.ActAsHandcuffs.Value || !Plugin.BlockEachOther.Value) return false;
+            if (UnityEngine.Time.frameCount - _crouchFrame <= 1) return false;
             foreach (var w in Hub.All)
             {
                 if ((w.Holds & BodyParts.Arms) == 0 || (inPlace && (w.Holds & BodyParts.Spot) == 0)) continue;
